@@ -4,6 +4,7 @@ Main Class for TEA
 
 @author: David Fuhrländer
 """
+from misc import helpers as hlp
 
 #TODO: make ouput of data/ file status
 
