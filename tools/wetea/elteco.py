@@ -4,9 +4,6 @@ Main Class for TEA
 
 @author: David Fuhrländer
 """
-import os
-
-from clc import TeaScenario
 
 #TODO: make ouput of data/ file status
 
@@ -87,10 +84,8 @@ class elTeco():
         '''
         '''
         ### Read data
-        if (self.pth_to_file_inputdata is not None and
-                os.path.exists(self.pth_to_file_inputdata):
-            self.logger.info('Read external Scenario-Data: %s',
-                            self.pth_to_file_inputdata)
+        if (self.pth_to_file_inputdata is not None) and os.path.exists(self.pth_to_file_inputdata):
+            self.logger.info('Read external Scenario-Data: %s', self.pth_to_file_inputdata)
             try:
                 if '.csv' in self.pth_to_file_inputdata:
                     df = pd.read_csv(self.pth_to_file_inputdata)
@@ -144,7 +139,7 @@ class elTeco():
                                         data_materialbalance=row.to_dict(),
                                         #enable_CE=enable_CE,
                                         pth_output=self.pth_to_dir_outputfile,
-                                        )
+                                        ))
 
         return instances
 
@@ -237,47 +232,7 @@ class TeaScenario():
         return
 
     def set_keys(self):
-        param_keys = {
-
-        }
-
-        matbal_keys = {
-            'year': 'year',
-            'nominal_power_we': 'P_N_el',
-            'max_power_we': 'P_max_el',
-            'max_power_generation': 'P_max_gen',
-            'E_HHV_H2': 'E_HHV_H2',
-            'E_LHV_H2': 'E_LHV_H2',
-            'mass_of_hydrogen_produced': 'm_H2',
-            'volume_of_hydrogen_produced': 'V_H2',
-            'mass_of_hydrogen_exchange': 'm_H2_ext',
-            'mass_of_oxygen_produced': 'm_O2',
-            'volume_of_oxygen_produced': 'V_O2',
-            'mass_of_water_consumed': 'm_H2O',
-            'mass_of_hydrogen_demand': 'm_H2_dmnd',
-            'utilized_electricity_we': 'E_util',
-            'electricity_feed-in_potential': 'E_in',
-            'electricity_demand_compressor': 'E_cmp',
-            'electricity_costs_we_simu': 'CE_util',
-            'electricity_costs_compressor_simu': 'CE_cmp',
-            'theoretical_emissions_from_electricity_demand_we': 'emiss_E_util',
-            'theoretical_emissions_from_electricity_demand_compressor': 'emiss_E_cmp',
-            'operation_time_we': 't_op_el',
-            'operation_time_electricity_feed-in': 't_op_gen',
-            'full_load_hours_we': 't_fl_we',
-            'full_load_hours_feed-in': 't_fl_gen',
-            'time_period_simu': 't_simu',
-            'mass_of_hydrogen_to_grid_simple': 'm_H2_to_grid_sc',
-            'mass_of_hydrogen_from_grid_simple': 'm_H2_frm_grid_sc',
-            'mass_of_hydrogen_to_storage_simple': 'm_H2_to_strg_sc',
-            'mass_of_hydrogen_from_storage_simple': 'm_H2_frm_strg_sc'
-        }
-
-    parameter_keys = {
-
-    }
-
-    return
+        return
 
 
     def setup_we(self, year, materialbalance=None, parameters=None):
@@ -307,21 +262,21 @@ class TeaScenario():
                 setattr(self.we, key, val)
 
         self.we.setup()
-        setattr(self.we, 'electricity_costs', self.dct_electricity_costs.get(year,None)
-        setattr(self.we, 'electricity_surcharges', self.dct_surcharges_electricity.get(year, None)
+        setattr(self.we, 'electricity_costs', self.dct_electricity_costs.get(year,None))
+        setattr(self.we, 'electricity_surcharges', self.dct_surcharges_electricity.get(year, None))
         return
 
 
 
 class WE():
 
-    def __init__(self)):
+    def __init__(self):
         pass
 
     def setup(self):
 
         ### Capex we
-        if self.costs_plantacquisition is not 0:
+        if self.costs_plantacquisition != 0:
 
             self.capex_plant = self.costs_plantacquisition  * self.nominal_power
         else:
