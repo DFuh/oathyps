@@ -14,7 +14,8 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="",
-    packages=setuptools.find_packages(),
+    package_dir={"": "src"},
+    packages=setuptools.find_packages("src/"),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GPL-3.0-only ",
