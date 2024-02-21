@@ -28,7 +28,7 @@ def timestamp(how='ISO'):
 
 
 
-def ini_logging(obj, name=None, pth='', level='INFO'):
+def ini_logging(obj, name='', pth='', level='INFO'):
     '''
     Initialize logging for console output only
 
@@ -43,9 +43,9 @@ def ini_logging(obj, name=None, pth='', level='INFO'):
         logging.basicConfig(level=logging.INFO)
 
     # remove all default handlers
+
     for handler in logger.handlers:
         logger.removeHandler(handler)
-
     # create console handler and set level to debug
     console_handle = logging.StreamHandler()
     if level.upper() == 'DEBUG':
@@ -54,15 +54,12 @@ def ini_logging(obj, name=None, pth='', level='INFO'):
         console_handle.setLevel(logging.INFO)
 
     # create formatter
-    formatter = logging.Formatter("%(name)-20s - %(levelname)-8s - %(message)s")
+    formatter = logging.Formatter("%(name)-20s :: %(levelname)-8s :: %(message)s")
     # formatter =logging.Formatter('[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s %(name)s \n- %(message)s')#,
     console_handle.setFormatter(formatter)
 
     # now add new handler to logger
-    logger.addHandler(console_handle)
-
-
-
+    #logger.addHandler(console_handle) # Remove to avoid duplicate output
     return logger, loggername
 
 
