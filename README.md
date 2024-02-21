@@ -1,2 +1,2 @@
 # oathyps
-A toolbox for hydrogen production systems analyses
+A toolbox for simulation and analyses of hydrogen production systems
