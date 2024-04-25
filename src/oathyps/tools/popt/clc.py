@@ -1,9 +1,56 @@
 import os
-
 import numpy as np
 import pandas as pd
-from oathyps.tools.wetea import clc as teaclc
+import matplotlib.pyplot as plt
+from oathyps.tools.wetea import clc as tea
 
+def find_nearest(array, value):
+    array = np.array(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx]
+
+def plot_popt(df, plt_dct, anno_key='full_load_hours_we', anno_val=5000,
+              key_x='rated_power_we', scale_x=1e-6, unit_x='GW', no_labels=True):
+    plt_keys = list(plt_dct.keys())
+
+    ### Annotations
+
+    fig, axes = plt.subplots(len(plt_keys), sharex=True)
+
+    if no_labels:
+        prfx_lbl = '_'
+    else:
+        prfx_lbl = ''
+
+    x_val = df[key_x]
+    for i, ax in enumerate(axes):
+        key = plt_keys[i]
+        y_scl = plt_dct[key]['scl']
+        y_val = df[key] * y_scl
+
+        ax.plot(x_val * scale_x, y_val, label=prfx_lbl + key)
+
+        anno_val_exact = find_nearest(df[anno_key],anno_val)
+        if hasattr(anno_val_exact,'len'):
+            if len(anno_val_exact) >1:
+                anno_val_exact[0]
+        anno_x_val = df[df[anno_key] == anno_val_exact][key_x].to_numpy()[0] * scale_x
+        anno_x = [0, anno_x_val,anno_x_val]
+        anno_y_val = df[df[anno_key] == anno_val_exact][key].to_numpy()[0] * y_scl
+        anno_y = [anno_y_val, anno_y_val,0]
+        ax.plot(anno_x, anno_y, linestyle='--', color='orangered')
+        ax.scatter(anno_x[1], anno_y[1], color='orangered', marker='x')
+
+        if not no_labels:
+            ax.legend()
+        ax.grid()
+        ax.set_ylabel(plt_dct[key]['label'] + plt_dct[key]['unit'])
+        ax.set_ylim(plt_dct[key]['limits'])
+    ax.set_xlabel('Nominal elecrical power of water-electrolyzer in ' + unit_x)
+    plt.tight_layout()
+
+    plt.show()
+    return fig
 
 class WE():
 
@@ -117,7 +164,7 @@ def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', 
             dct['full_load_hours_we'][j] = 0
 
         ### clc StackReplacement costs || taken from elteco
-        dct['costs_stackreplacement_we'][j] = teaclc.stackreplacement(costs_stack_we_specific,  # capital costs Stack
+        dct['costs_stackreplacement_we'][j] = tea.stackreplacement(costs_stack_we_specific,  # capital costs Stack
                                                                          P_in,  # Nominal Power of plant
                                                                          dct['time_of_operation_we'][j],  # total_operation_time_stack
                                                                          lifetime_stack_we,
@@ -144,17 +191,59 @@ def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', 
 
 if __name__ == '__main__':
 
-    parameters_eff_we = (10,1,1e-1,30,200,1e-2)
+    parameters_eff_we = (10, 1, 1e-1, 30, 200, 1e-2)
     we = WE()
-    ddata = np.zeros((5, 2))
-    dt_idx = pd.date_range('2019-01-01 00:00:00', periods=len(ddata), freq='10m')
-    df_in = pd.DataFrame(data=ddata, columns=['Date','P'])
-    df_in['Date'] = dt_idx
+
+    pth_to_dir = input('Please enter path to file (directory)')
+    flnm_df_in = input('Please enter filename')
+    pth_out = input('Please enter output directory')
+    fl = os.path.join(pth_to_dir, flnm_df_in)
+    df_in = pd.read_csv(fl)
+    df_in['Date'] = pd.to_datetime(df_in.Date)
+    df_in = df_in.rename(columns={'P_wp': 'P'})
+
+    df_in = df_in[['Date', 'P']]
+    if False:
+        ddata = np.zeros((5, 2))
+        dt_idx = pd.date_range('2019-01-01 00:00:00', periods=len(ddata), freq='10m')
+        df_in = pd.DataFrame(data=ddata, columns=['Date', 'P'])
+
+        df_in['Date'] = dt_idx
+
+    print('columns: ', df_in.columns)
     df_in['tdelta'] = (df_in['Date'].diff().dt.seconds.div(3600, fill_value=0))
-    df_ret = power_specific_key_values(df_in,we,n_iterations=100, sig_column='P', P_we_max=1, frc_P_we_min=0.1,
-                                       efficiency_we_hhv=0.7, par_eff_we=parameters_eff_we)
-    cwd = os.getcwd()
-    print('cwd: ', cwd)
-    if input('Save testfile [y/n] ?') == 'y':
-        df_ret.to_csv(cwd+'/testdf_popt.csv')
-    print(' --finish --')
+    df_ret = power_specific_key_values(df_in, we, n_iterations=100,
+                                           sig_column='P', P_we_max=1500e3,
+                                           P_sig_max=2e6,
+                                           frc_P_we_min=0.005,
+                                           efficiency_we_hhv=0.75,
+                                           par_eff_we=None, e_spc_h2=39.4,
+                                           capex_we_specific=500/20, opex_we_specific=12,
+                                           costs_stack_we_specific=0.5 * 500,
+                                           costs_electricity_spc=60e-3,  # €/kWh
+                                           lifetime_stack_we=50000,  # h
+                                           lifetime_plnt_we=20  # a
+                                           )
+
+    plt_dct = {
+        'energy_utilized_we': {'scl': 1e-9, 'unit': 'TWh', 'label': 'Utilized energy \n in \n ', 'limits': [0, 10]},
+        'full_load_hours_we': {'scl': 1, 'unit': 'h', 'label': 'Full Load\n Hours in \n ', 'limits': [0, 8700]},
+        'mass_hydrogen_produced': {'scl': 1e-6, 'unit': 'kt', 'label': 'Produced amount \n of hydrogen \n in \n ',
+                                   'limits': [0, 150]},
+        'lcoh': {'scl': 1, 'unit': '€/kg', 'label': 'LCOH \n in \n ', 'limits': [0, 10]}}
+    fig = plot_popt(df_ret, plt_dct)
+    if False:
+        parameters_eff_we = (10,1,1e-1,30,200,1e-2)
+        we = WE()
+        ddata = np.zeros((5, 2))
+        dt_idx = pd.date_range('2019-01-01 00:00:00', periods=len(ddata), freq='10m')
+        df_in = pd.DataFrame(data=ddata, columns=['Date','P'])
+        df_in['Date'] = dt_idx
+        df_in['tdelta'] = (df_in['Date'].diff().dt.seconds.div(3600, fill_value=0))
+        df_ret = power_specific_key_values(df_in,we,n_iterations=100, sig_column='P', P_we_max=1, frc_P_we_min=0.1,
+                                           efficiency_we_hhv=0.7, par_eff_we=parameters_eff_we)
+        cwd = os.getcwd()
+        print('cwd: ', cwd)
+        if input('Save testfile [y/n] ?') == 'y':
+            df_ret.to_csv(cwd+'/testdf_popt.csv')
+        print(' --finish --')
