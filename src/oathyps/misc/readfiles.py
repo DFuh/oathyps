@@ -4,7 +4,10 @@ def read_json_file(abspth_to_fl=None,pth=None, flnm=None):
     read json file from full_path
     TODO: remove print statements (?)
     '''
+
     if not abspth_to_fl:
+        if pth is None:
+            pth = os.getcwd()
         abspth_to_fl = os.path.join(pth,flnm)
     if not os.path.exists(abspth_to_fl):
         print('Invalid filename (readingfile.read_json_file): ', abspth_to_fl)
