@@ -63,10 +63,11 @@ class WE():
 def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', P_we_max=1, frc_P_we_min=0.1,
                                 P_sig_max=1,
                               efficiency_we_hhv=0.7, par_eff_we=None, e_spc_h2=39.4,
-                              capex_we_specific_annual=0, opex_we_specific = 0, costs_stack_we_specific = 1,
+                              capex_we_specific=0, opex_we_specific = 0, costs_stack_we_specific = 1,
                               costs_electricity_spc = 60,
                               lifetime_stack_we = 50000,  # h
-                              lifetime_plnt_we = 20  # a
+                              lifetime_plnt_we = 20,  # a
+                              interestrate=0.05
                                 ):
     '''
 
@@ -151,7 +152,7 @@ def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', 
         dct['energy_in_hydrogen_produced'][j] = dfs.E_H2.sum()
         dct['mass_hydrogen_produced'][j] = dct['energy_in_hydrogen_produced'][j] / e_spc_h2
 
-        dct['capex_of_plant_we'][j] = P_in * capex_we_specific_annual
+        dct['capex_of_plant_we'][j] = P_in * capex_we_specific * tea.annuity_factor(interestrate, lifetime_plnt_we)
         dct['opex_of_plant_we'][j] = P_in * opex_we_specific
         dct['costs_electricity'][j] = dct['energy_utilized_we'][j] * costs_electricity_spc
         dct['costs_electricity_sig'][j] = dct['sig_energy_available'][j] * costs_electricity_spc
