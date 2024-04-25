@@ -196,21 +196,17 @@ if __name__ == '__main__':
     parameters_eff_we = (10, 1, 1e-1, 30, 200, 1e-2)
     we = WE()
 
-    pth_to_dir = input('Please enter path to file (directory)')
-    flnm_df_in = input('Please enter filename')
-    pth_out = input('Please enter output directory')
+    default_path_params = rf.read_json_file(flnm='testingparameters.json')
+
+    pth_to_dir = default_path_params.get('path_input',input('Please enter path to file (directory)'))
+    flnm_df_in = default_path_params.get('filename',input('Please enter filename'))
+    pth_out = default_path_params.get('path_output',input('Please enter output directory'))
     fl = os.path.join(pth_to_dir, flnm_df_in)
     df_in = pd.read_csv(fl)
     df_in['Date'] = pd.to_datetime(df_in.Date)
     df_in = df_in.rename(columns={'P_wp': 'P'})
 
     df_in = df_in[['Date', 'P']]
-    if False:
-        ddata = np.zeros((5, 2))
-        dt_idx = pd.date_range('2019-01-01 00:00:00', periods=len(ddata), freq='10m')
-        df_in = pd.DataFrame(data=ddata, columns=['Date', 'P'])
-
-        df_in['Date'] = dt_idx
 
     print('columns: ', df_in.columns)
     df_in['tdelta'] = (df_in['Date'].diff().dt.seconds.div(3600, fill_value=0))
@@ -234,18 +230,3 @@ if __name__ == '__main__':
                                    'limits': [0, 150]},
         'lcoh': {'scl': 1, 'unit': '€/kg', 'label': 'LCOH \n in \n ', 'limits': [0, 10]}}
     fig = plot_popt(df_ret, plt_dct)
-    if False:
-        parameters_eff_we = (10,1,1e-1,30,200,1e-2)
-        we = WE()
-        ddata = np.zeros((5, 2))
-        dt_idx = pd.date_range('2019-01-01 00:00:00', periods=len(ddata), freq='10m')
-        df_in = pd.DataFrame(data=ddata, columns=['Date','P'])
-        df_in['Date'] = dt_idx
-        df_in['tdelta'] = (df_in['Date'].diff().dt.seconds.div(3600, fill_value=0))
-        df_ret = power_specific_key_values(df_in,we,n_iterations=100, sig_column='P', P_we_max=1, frc_P_we_min=0.1,
-                                           efficiency_we_hhv=0.7, par_eff_we=parameters_eff_we)
-        cwd = os.getcwd()
-        print('cwd: ', cwd)
-        if input('Save testfile [y/n] ?') == 'y':
-            df_ret.to_csv(cwd+'/testdf_popt.csv')
-        print(' --finish --')
