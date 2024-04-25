@@ -161,3 +161,4 @@ cython_debug/
 
 ### additional
 /src/oathyps/tools/popt/testdf_popt.csv
+/src/oathyps/tools/popt/testingparameters.json
