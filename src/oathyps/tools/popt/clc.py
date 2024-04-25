@@ -111,8 +111,10 @@ def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', 
 
 
         ### operational time
-        dct['full_load_hours_we'][j] = (dct['energy_utilized_we'][j] / P_in)  # resulting operation time // in h
-
+        if dct['energy_utilized_we'][j] >0:
+            dct['full_load_hours_we'][j] = (dct['energy_utilized_we'][j] / P_in)  # resulting operation time // in h
+        else:
+            dct['full_load_hours_we'][j] = 0
 
         ### clc StackReplacement costs || taken from elteco
         dct['costs_stackreplacement_we'][j] = teaclc.stackreplacement(costs_stack_we_specific,  # capital costs Stack
@@ -132,8 +134,10 @@ def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', 
                                                     + dct['costs_electricity'][j]
                                                     + dct['costs_stackreplacement_we'][j]
                                                     )
-        dct['lcoh'][j] = dct['total_costs_plant_operation_we'][j] / dct['mass_hydrogen_produced'][j]
-
+        if dct['total_costs_plant_operation_we'][j] > 0:
+            dct['lcoh'][j] = dct['total_costs_plant_operation_we'][j] / dct['mass_hydrogen_produced'][j]
+        else:
+            dct['lcoh'][j] = np.nan
     df_o = pd.DataFrame(dct)
     return df_o
 
