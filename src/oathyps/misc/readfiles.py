@@ -1,4 +1,5 @@
 import os
+import json
 def read_json_file(abspth_to_fl=None,pth=None, flnm=None):
     '''
     read json file from full_path
