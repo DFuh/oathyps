@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from oathyps.tools.wetea import clc as tea
+from oathyps.misc import readfiles as rf
 
 def find_nearest(array, value):
     array = np.array(array)
