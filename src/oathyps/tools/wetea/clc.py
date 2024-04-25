@@ -143,19 +143,7 @@ def stackreplacement(cost_stack_bare, # capital costs Stack
                 n_strpl = math.ceil(lifetime_we / effective_lifespan_st) -1# number of additional stack(s) to be replaced (every n operation hours)
 
     k_strpl_spc = (n_strpl + offset_n_replacements) * cost_stack_bare / lifetime_we  # // in €/Stack * Stacks / operation_time
-    print('k_strpl_spc: ', k_strpl_spc)
     k_strpl = k_strpl_spc * nominal_power
-
-
-    if False: #debug:
-        print('tec: ', self.tec)
-        print('lt_st || t_op || lt_el', lifetime_stack,'||',
-                total_operation_time_we,'||', lifetime_we)
-        print('bare_Stack_Costs: ', self.cost_stack_bare)
-        print('effective lifespan: ', self.effective_lifespan_St)
-        print('self.n_strpl: ', self.n_strpl)
-        print('k_strpl_spc: ', self.k_strpl_spc)
-        print('k_strpl: ', self.k_strpl)
 
     if return_specific:
         return k_strpl_spc
