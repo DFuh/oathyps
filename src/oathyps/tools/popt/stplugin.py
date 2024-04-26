@@ -7,7 +7,7 @@ from oathyps.misc import readfiles as rf
 def process_data(args):
     default_params = rf.read_json_file(flnm='testingparameters.json')
 
-    we = clc.WE()
+    we = None
 
     pth_to_dir = default_params.get('path_input', None)
     flnm_df_in = default_params.get('filename', None)

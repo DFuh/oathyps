@@ -53,13 +53,6 @@ def plot_popt(df, plt_dct, anno_key='full_load_hours_we', anno_val=5000,
     plt.show()
     return fig
 
-class WE():
-
-    def __init__(self,):
-        pass
-
-    def efficiency(self,x, a1, B1, k1, a2, B2, k2):
-            return B1 * np.log(x + 1) / np.exp(a1 * x ** k1) + B2 * np.log(x + 1) / np.exp(a2 * x ** k2)
 
 def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', P_we_max=1, frc_P_we_min=0.1,
                                 P_sig_max=1,
@@ -194,7 +187,7 @@ def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', 
 if __name__ == '__main__':
 
     parameters_eff_we = (10, 1, 1e-1, 30, 200, 1e-2)
-    we = WE()
+    we = None
 
     default_path_params = rf.read_json_file(flnm='testingparameters.json')
 
