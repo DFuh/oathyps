@@ -183,17 +183,16 @@ def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', 
     df_o = pd.DataFrame(dct)
     return df_o
 
+def run_popt(parameters='testingparameters.json'):
 
-if __name__ == '__main__':
-
-    parameters_eff_we = (10, 1, 1e-1, 30, 200, 1e-2)
     we = None
 
-    default_path_params = rf.read_json_file(flnm='testingparameters.json')
+    path_params = rf.read_json_file(flnm=parameters)
 
-    pth_to_dir = default_path_params.get('path_input',input('Please enter path to file (directory)'))
-    flnm_df_in = default_path_params.get('filename',input('Please enter filename'))
-    pth_out = default_path_params.get('path_output',input('Please enter output directory'))
+    pth_to_dir = path_params.get('path_input', input('Please enter path to file (directory)'))
+    flnm_df_in = path_params.get('filename', input('Please enter filename'))
+    pth_out = path_params.get('path_output', input('Please enter output directory'))
+
     fl = os.path.join(pth_to_dir, flnm_df_in)
     df_in = pd.read_csv(fl)
     df_in['Date'] = pd.to_datetime(df_in.Date)
@@ -204,22 +203,26 @@ if __name__ == '__main__':
     print('columns: ', df_in.columns)
     df_in['tdelta'] = (df_in['Date'].diff().dt.seconds.div(3600, fill_value=0))
     df_ret = power_specific_key_values(df_in, we, n_iterations=100,
-                                           sig_column='P', P_we_max=1500e3,
-                                           P_sig_max=2e6,
-                                           frc_P_we_min=0.005,
-                                           efficiency_we_hhv=0.75,
-                                           par_eff_we=None, e_spc_h2=39.4,
-                                           capex_we_specific=500/20, opex_we_specific=12,
-                                           costs_stack_we_specific=0.5 * 500,
-                                           costs_electricity_spc=60e-3,  # €/kWh
-                                           lifetime_stack_we=50000,  # h
-                                           lifetime_plnt_we=20  # a
-                                           )
+                                       sig_column='P', P_we_max=1500e3,
+                                       P_sig_max=2e6,
+                                       frc_P_we_min=0.005,
+                                       efficiency_we_hhv=0.75,
+                                       par_eff_we=None, e_spc_h2=39.4,
+                                       capex_we_specific=500 / 20, opex_we_specific=12,
+                                       costs_stack_we_specific=0.5 * 500,
+                                       costs_electricity_spc=60e-3,  # €/kWh
+                                       lifetime_stack_we=50000,  # h
+                                       lifetime_plnt_we=20  # a
+                                       )
 
     plt_dct = {
         'energy_utilized_we': {'scl': 1e-9, 'unit': 'TWh', 'label': 'Utilized energy \n in \n ', 'limits': [0, 10]},
-        'full_load_hours_we': {'scl': 1, 'unit': 'h', 'label': 'Full Load\n Hours in \n ', 'limits': [0, 8700]},
+        'full_load_hours_we': {'scl': 1, 'unit': 'h', 'label': 'Full Load\n Hours in \n ', 'limits': [0, 8760]},
         'mass_hydrogen_produced': {'scl': 1e-6, 'unit': 'kt', 'label': 'Produced amount \n of hydrogen \n in \n ',
                                    'limits': [0, 150]},
         'lcoh': {'scl': 1, 'unit': '€/kg', 'label': 'LCOH \n in \n ', 'limits': [0, 10]}}
     fig = plot_popt(df_ret, plt_dct)
+    return {'figure':fig, 'df':df_ret}
+
+if __name__ == '__main__':
+    run_popt()
