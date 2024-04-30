@@ -3,27 +3,44 @@ import streamlit as st
 import pandas as pd
 from oathyps.tools.popt import clc
 from oathyps.misc import readfiles as rf
-@st.cache_data
-def process_data(args):
-    default_params = rf.read_json_file(flnm='testingparameters.json')
 
+
+@st.cache_data
+def process_data(args, file=None, use_default_data=False):
     we = None
 
-    pth_to_dir = default_params.get('path_input', None)
-    flnm_df_in = default_params.get('filename', None)
-    pth_out = default_params.get('path_output', None)
-    fl = os.path.join(pth_to_dir, flnm_df_in)
-    df_in = pd.read_csv(fl)
-    df_in['Date'] = pd.to_datetime(df_in.Date)
-    df_in = df_in.rename(columns={'P_wp': 'P'})
+    if file is not None:
+        if isinstance(file, pd.DataFrame):
+            if len(file.columns) >2:
+                st.write('Columns should be [Date,Power] (slicing df)')
+                df_in = file.iloc[:,[0,1]]
+            else:
+                df_in = file.copy()
+        else:
+            st.write('-- Invalid type of file --'):
 
-    df_in = df_in[['Date', 'P']]
+            use_default_data = True
+
+    if use_default_data == True or file is None:
+        power_output = clc.read_default_data()
+        df_in = pd.DataFrame(power_output)
+        df_in = df_in.reset_index()
+    df_in.columns = ['Date', 'P']
+
+
+
 
     df_in['tdelta'] = (df_in['Date'].diff().dt.seconds.div(3600, fill_value=0))
     df = clc.power_specific_key_values(df_in, we, **args)
     return df, default_params
 
 with (st.sidebar):
+
+    use_default_data = st.checkbox('Use default data')
+
+    if not use_default_data:
+
+
     args = {
     "n_iterations": st.slider("Select resolution (n iterations)", 1, 1000,100),
     "sig_column": st.text_input("Column name for power-signal ", value='P'),
@@ -39,7 +56,7 @@ with (st.sidebar):
     "lifetime_plnt_we": st.slider("Lifetime WE-plant in years",1,100,20)  # a
     }
 
-    df, params = process_data(args)
+    df, params = process_data(args,file=file,use_default_data=True)
     #st.dataframe(df)
 
     st.button("Rerun")
