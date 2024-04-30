@@ -1,7 +1,10 @@
 import os
+import requests
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import windpowerlib as wpl
+
 from oathyps.tools.wetea import clc as tea
 from oathyps.misc import readfiles as rf
 
@@ -9,6 +12,26 @@ def find_nearest(array, value):
     array = np.array(array)
     idx = (np.abs(array - value)).argmin()
     return array[idx]
+
+def read_default_data():
+    '''
+    Using example data from windpowerlib as default data
+    '''
+    req = requests.get("https://osf.io/59bqn/download")
+    with open("weather.csv", "wb") as fout:
+        fout.write(req.content)
+    weather_df = pd.read_csv("weather.csv",
+                             index_col=0,
+                             header=[0, 1],
+                             )
+    weather_df.index = pd.to_datetime(weather_df.index, utc=True)
+
+    # change time zone
+    weather_df.index = weather_df.index.tz_convert("Europe/Berlin")
+
+    turbine = wpl.WindTurbine(turbine_type="V164/8000", hub_height=150)
+    mc_turbine = wpl.ModelChain(turbine).run_model(weather_df)
+    return mc_turbine.power_output
 
 def plot_popt(df, plt_dct, anno_key='full_load_hours_we', anno_val=5000,
               key_x='rated_power_we', scale_x=1e-6, unit_x='GW', no_labels=True):
