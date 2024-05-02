@@ -62,9 +62,16 @@ def plot_popt(df, plt_dct, anno_key='full_load_hours_we', anno_val=5000,
         anno_x = [0, anno_x_val,anno_x_val]
         anno_y_val = df[df[anno_key] == anno_val_exact][key].to_numpy()[0] * y_scl
         anno_y = [anno_y_val, anno_y_val,0]
-        ax.plot(anno_x, anno_y, linestyle='--', color='orangered')
-        ax.scatter(anno_x[1], anno_y[1], color='orangered', marker='x')
-
+        anno_y_max = df[anno_key].max()
+        ax.plot(anno_x, anno_y, linestyle='--', color='orangered',linewidth=1)
+        ax.scatter(anno_x[1], anno_y[1], color='orangered', marker='x', s=15)
+        ax.annotate(str(round(anno_y[1],1))+' '+plt_dct[key]['unit'],
+                    xy=(anno_x[1], anno_y[1]), xytext=(anno_x[1], anno_y[1]), #((anno_y[1]/anno_y_max)+0.05)*anno_y_max),
+                    fontsize=8, color='dimgrey',
+                    bbox=dict(boxstyle="square",
+                              fc="white", alpha=0.6, ec="none", lw=2)
+                    #arrowprops=dict(facecolor='black', shrink=0.05)
+                    )
         if not no_labels:
             ax.legend()
         ax.grid()
