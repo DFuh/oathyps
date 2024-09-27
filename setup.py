@@ -1,6 +1,15 @@
 # -*- coding: utf-8 -*-
 
+
+
 import setuptools
+__copyright__ = (
+    "University Bremen, "
+)
+__license__ = ""
+__author__ = (
+    "DFuh, "
+)
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
