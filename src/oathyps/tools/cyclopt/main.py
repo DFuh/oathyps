@@ -5,7 +5,10 @@ Created on Wed Sep  4 10:29:11 2024
 
 @author: DFuh
 """
+import os
+import sys
 import numpy as np
+import pandas as pd
 import glob
 import matplotlib.pyplot as plt 
 from pyomo.environ import *
@@ -14,7 +17,7 @@ from pyomo.opt import SolverFactory
 from oathyps.misc import helpers as hlp
 from oathyps.misc import readfiles as rf
 import plotting as pplt
-import cyclopt
+from oathyps.tools.cyclopt import indcyclop as ico
 
 usage = """Output an Energy System in Graphviz DOT format.
 
@@ -96,19 +99,22 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             fl = flst[0]
         ### Read cyclopt input data
         parameters = rf.read_json_file(abspth_to_fl=fl)
-        filename_data = parameters.get('filename_data',None)
+        print('parameters: ', parameters)
+        filename_data = parameters.get('pth_to_data',None)
         if filename_data:
             pth_to_df = os.path.join(pth_to_inputfiles,filename_data)
             df = pd.read_csv(pth_to_df)
-        TN = len(df) if parameters.get('timerange',None) is None
+            TN = len(df) if parameters.get('timerange',None) is None else parameters.get('timerange',None)
+            loadprofile = parameters.get('loadprofile', np.array([0, 0, 0, 10, 10, 10, 10, 0, 0]))
 
-        model = cyclopt.create_eaf_model(load_timeseries=df['load'],
-                                 price_timeseries=df['electricity_price'],
-                                 number_of_eaf=parameters.get(,None),
+            model = ico.create_process_model(load_timeseries=df['load'].to_numpy(),
+                                 price_timeseries=df['electricity_price'].to_numpy(),
+                                 number_of_eaf=parameters.get('number_of_processes',None),
                                     timerange=TN,
-                                 eaf_loadprofile=parameters.get('loadprofile',None),
-                                 target_power_level=parameters.get('P_target,0))
-
+                                 loadprofile=loadprofile,
+                                 target_power_level=parameters.get('P_target',{'val':0})['val'])
+        else:
+            print('Could not read file: ', filename_data)
     ### Solve
     opt = SolverFactory('cbc')  # , solver_io="python")
     x = opt.solve(model, tee=solver_verbose)
@@ -138,7 +144,7 @@ if __name__ == '__main__':
         output_pth = None
 
 
-    main(pth_to_inputfiles=input_pth,pth_to_outputfiles=output_pth)
+    run_copt(pth_to_inputfiles=input_pth,pth_to_outputfiles=output_pth)
     
 
     

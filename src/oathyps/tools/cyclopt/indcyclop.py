@@ -21,12 +21,12 @@ def constr2d(data):
 
 
 def create_process_model(load_timeseries=None, price_timeseries=None,
-                     number_of_eaf=2,timerange=30,eaf_loadprofile=[0,1,1,0],
+                     number_of_eaf=2,timerange=30,loadprofile=[0,1,1,0],
                      target_power_level=0):
 
     TN = timerange
     ls = number_of_eaf
-    loadprofile = eaf_loadprofile
+    #loadprofile = eaf_loadprofile
     
     f_par = constr2d(np.array([loadprofile]*ls))
     
@@ -93,7 +93,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     ### check P_abs
     def check_pabs(model, k):
         # return model.testv_k[k] == (2 * (model.auxvar0[k] + model.auxvar1[k])) * model.P_price[k]
-        return (model.P_res[k]-model.P_tar)
+        return model.testv_k[k] ==  model.P_res[k]-model.P_tar
 
     model.CheckPdiff = Constraint(model.K, rule=check_pabs)
 
