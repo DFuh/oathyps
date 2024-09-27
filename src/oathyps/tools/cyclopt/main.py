@@ -3,30 +3,38 @@
 """
 Created on Wed Sep  4 10:29:11 2024
 
-@author: dafu_res
+@author: DFuh
 """
 import numpy as np
 import matplotlib.pyplot as plt 
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
-from pyomo.util.infeasible import log_infeasible_constraints
 
-import plotting_eaf_opt as pplt
-import cmpl_eaf_scheduling_pyomo_model as cmplmod
+from oathyps.misc import helpers as hlp
+from oathyps.misc import readfiles as rf
+import plotting as pplt
+import cyclopt
 
+usage = """Output an Energy System in Graphviz DOT format.
 
+Usage: python cyclopt.main.py SPREADSHEET_FILE
 
+ you'd have to use the sequence:
 
+    ```sh
+    python cyclopt.main.py PATH_TO_INPUT_DIRECTORY PATH_TO_OUTPUT_DIRECTORY
+    
+    ```
+"""
 
-
-def model_setup(load_ones=False,price_ones=False):
+def default_setup(load_ones=False,price_ones=False):
     # loadprofile = np.array([0,0,0,10,12,9,0,0,0])*90
     # loadprofile = np.array([8,9,10,12,12,12,5,4,4])*90
     loadprofile = np.array([0,0,0,12,12,12,12,0,0])*90
 
     # Sets
     ls = 5 #1000#9#0
-    TN = 40 #2000#8760
+    TN = 30 #2000#8760
     
     randomarr = np.array([0.06377479, 0.89821124, 0.53202501, 0.65797417, 0.59679081,
            0.5979558 , 0.50484718, 0.60746121, 0.08740392, 0.88140759,
@@ -58,42 +66,76 @@ def model_setup(load_ones=False,price_ones=False):
     
 
     
-    return cmplmod.create_eaf_model(load_timeseries=fixed_load, 
+    return cyclopt.create_process_model(load_timeseries=fixed_load,
                                     price_timeseries=fixed_price,
                          number_of_eaf=2,timerange=30,
                          eaf_loadprofile=loadprofile,
                          target_power_level=1000)
 
 
-def main(solver_verbose=True):
-    
+def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=True):
     ### Add possibility of reading external files
-    
     ### setup
-    model = model_setup()
-    
+
+    ### File output
+    if pth_to_outputfiles != False:
+        full_pth_outputfiles = hlp.mk_dir(pth_to_outputfiles,'cyclopt_out')
+        logfile = os.path.join(full_pth_outputfiles,"cyclopt_solver.log")
+        pth_figure=os.path.join(full_pth_outputfiles,"fig_cyclopt.pdf")
+    else:
+        logfile=None
+        full_pth_outputfiles = None
+        pth_figure = None
+
+    if not pth_to_inputfiles:
+        model = default_setup()
+    else:
+
+        ### Read cyclopt input data
+        parameters = rf.read_json_file(abspth_to_fl=)
+        filename_data = parameters.get('filename_data',None)
+        if filename_data:
+            pth_to_df = os.path.join(pth_to_inputfiles,filename_data)
+            df = pd.read_csv(pth_to_df)
+        TN = len(df) if parameters.get('timerange',None) is None
+
+        model = cyclopt.create_eaf_model(load_timeseries=df['load'],
+                                 price_timeseries=df['electricity_price'],
+                                 number_of_eaf=parameters.get(,None),
+                                    timerange=TN,
+                                 eaf_loadprofile=parameters.get('loadprofile',None),
+                                 target_power_level=parameters.get('P_target,0))
+
     ### Solve
-    opt = SolverFactory('cbc')#, solver_io="python")
-    x = opt.solve(model,tee=solver_verbose)
+    opt = SolverFactory('cbc')  # , solver_io="python")
+    x = opt.solve(model, tee=solver_verbose)
     # log_infeasible_constraints(model)
-    
+
     # model.display()
-    
-    
-    #for i in x:
+
+    # for i in x:
     #    print(f'{i}: {x[i]}')
     # # print(value(model.obj))
-    
-    pplt.plot_eaf_opt(model)
+
+    pplt.plot_eaf_opt(model,pth_out=pth_figure)
     return
 
     
 
     
 if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print(usage)
+        sys.exit(0)
+    elif len(sys.argv) > 2:
+        input_pth = sys.argv[1]
+        output_pth = sys.argv[2]
+    else:
+        input_pth = sys.argv[1]
+        output_pth = None
 
 
-    main()
+    main(pth_to_inputfiles=input_pth,pth_to_outputfiles=output_pth)
     
 
     
