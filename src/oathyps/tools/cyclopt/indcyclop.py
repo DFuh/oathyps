@@ -89,10 +89,13 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     ###########################################################################
     ### Constraints
     ###########################################################################
-    
+
     ### check P_abs
-    def ckeck_pabs():
-        return model.testv_k[k] == (model.P_res[k]-model.P_tar)
+    def check_pabs(model, k):
+        # return model.testv_k[k] == (2 * (model.auxvar0[k] + model.auxvar1[k])) * model.P_price[k]
+        return (model.P_res[k]-model.P_tar)
+
+    model.CheckPdiff = Constraint(model.K, rule=check_pabs)
 
     ### Absolute value in objective function
     def absolute_value_Pdiff(model,k):
