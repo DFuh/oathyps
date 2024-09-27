@@ -3,7 +3,7 @@
 """
 Created on Thu Sep 26 13:41:57 2024
 
-@author: dafu_res
+@author: DFuh
 """
 import numpy as np
 from pyomo.environ import *
@@ -20,7 +20,7 @@ def constr2d(data):
 
 
 
-def create_eaf_model(load_timeseries=None, price_timeseries=None,
+def create_process_model(load_timeseries=None, price_timeseries=None,
                      number_of_eaf=2,timerange=30,eaf_loadprofile=[0,1,1,0],
                      target_power_level=0):
 
@@ -63,13 +63,13 @@ def create_eaf_model(load_timeseries=None, price_timeseries=None,
     model.ep_s_k = Var(model.S, model.K, within=Binary) # end process of system s
     model.actp_s_k = Var(model.S, model.K, initialize=0,within=Binary) # process of system s active
 
-    model.slack0 = Var(model.K, initialize=0, within=NonNegativeReals)
-    model.slack1 = Var(model.K, initialize=0, within=NonNegativeReals)
+    model.auxvar0 = Var(model.K, initialize=0, within=NonNegativeReals)
+    model.auxvar1 = Var(model.K, initialize=0, within=NonNegativeReals)
     model.P_tar = Param( initialize=target_power_level)
     model.P_res_obj = Var(model.K,initialize=0, within=NonNegativeReals)
 
 
-#    model.slack_idx = Param(model.K, initialize=np.arange(model.K.__len__()), within=NonNegativeIntegers)
+#    model.auxvar_idx = Param(model.K, initialize=np.arange(model.K.__len__()), within=NonNegativeIntegers)
     model.testv_r = Var(model.S,model.K, #initialize=constr2d(np.array([np.zeros(model.K.__len__()),np.zeros(model.K.__len__())])),
                           #within=NonNegativeReals
                           )
@@ -81,7 +81,7 @@ def create_eaf_model(load_timeseries=None, price_timeseries=None,
     
     def objective_rule(model):
         
-        return sum((2*(model.slack0[k] + model.slack1[k]))*model.P_price[k] for k in model.K)
+        return sum((2*(model.auxvar0[k] + model.auxvar1[k]))*model.P_price[k] for k in model.K)
     
     model.Objective = Objective(rule=objective_rule, sense=minimize)
 
@@ -96,8 +96,8 @@ def create_eaf_model(load_timeseries=None, price_timeseries=None,
 
     ### Absolute value in objective function
     def absolute_value_Pdiff(model,k):
-        #if value(model.slack0[k])>=0 and value(model.slack1[k])>=0: 
-        return model.slack0[k] - model.slack1[k] == (model.P_res[k]-model.P_tar)    
+        #if value(model.auxvar0[k])>=0 and value(model.auxvar1[k])>=0: 
+        return model.auxvar0[k] - model.auxvar1[k] == (model.P_res[k]-model.P_tar)    
     
     model.AbsPdiff = Constraint(model.K, rule=absolute_value_Pdiff)
     
