@@ -3,7 +3,7 @@
 """
 Created on Thu Sep 26 13:36:13 2024
 
-@author: dafu_res
+@author: DFuh
 """
 import numpy as np
 import matplotlib.pyplot as plt 
@@ -11,7 +11,7 @@ from pyomo.environ import *
 
 ### Plotting
 
-def plot_eaf_opt(model, keys=[],printvals=False):
+def plot_eaf_opt(model, keys=[],printvals=False, pth_out=None):
     
     #if not keys:
     #    keys = ['P_res', 'P_s_k', '']
@@ -19,6 +19,7 @@ def plot_eaf_opt(model, keys=[],printvals=False):
     var = getattr(model,'P_res',None)
     idx = list(var)
     P_price = list(model.P_price[:])
+    P_diff = value(model.testv_k[:])
     P_fix = list(model.P_fix[:])
     P_res = value(model.P_res[:])
     
@@ -57,10 +58,10 @@ def plot_eaf_opt(model, keys=[],printvals=False):
     sp_idx0 = value(model.sp_s_k[0,:])
     sp_idx1 = value(model.sp_s_k[1,:]) 
     act_idx0 = value(model.actp_s_k[0,:])
-    act_idx1 = value(model.actp_s_k[1,:]) 
-    
-    pltlst = [[P_price],[P_fix,P_res]+l_Psk,l_w] #[sp_idx0,sp_idx1,act_idx0,act_idx1]]
-    keylst = [['P_price'],['P_fix','P_res']+kl_Psk,kl_w] #['sp_idx0','sp_idx1','act_idx0','act_idx1']]
+    act_idx1 = value(model.actp_s_k[1,:])
+
+    pltlst = [[P_price], [P_fix, P_res] + l_Psk, [P_diff, ], l_w]  # [sp_idx0,sp_idx1,act_idx0,act_idx1]]
+    keylst = [['P_price'], ['P_fix', 'P_res'] + kl_Psk, ['P_diff'], kl_w]
     mrk0 = ['none','none','o','x','+','>','*']+['o','x','+','>','*']*int(len(model.S)/5)
     mrk = ['o','x','+','>','*']+['o','x','+','>','*']*int(len(model.S)/5)
     if True:
@@ -84,6 +85,8 @@ def plot_eaf_opt(model, keys=[],printvals=False):
         #plt.legend()
         #plt.grid()
         plt.show()
+    if pth_out is not None:
+        fig.savefig(pth_out)
     return #x, ws_r_k0
 
 
