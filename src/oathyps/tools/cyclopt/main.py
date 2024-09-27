@@ -79,7 +79,7 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
 
     ### File output
     if pth_to_outputfiles != False:
-        full_pth_outputfiles = hlp.mk_dir(pth_to_outputfiles,'cyclopt_out')
+        full_pth_outputfiles = hlp.mk_dir(pth_to_outputfiles,'out')
         logfile = os.path.join(full_pth_outputfiles,"cyclopt_solver.log")
         pth_figure=os.path.join(full_pth_outputfiles,"fig_cyclopt.pdf")
     else:
