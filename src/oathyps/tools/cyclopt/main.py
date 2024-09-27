@@ -6,6 +6,7 @@ Created on Wed Sep  4 10:29:11 2024
 @author: DFuh
 """
 import numpy as np
+import glob
 import matplotlib.pyplot as plt 
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
@@ -90,9 +91,11 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
     if not pth_to_inputfiles:
         model = default_setup()
     else:
-
+        flst = glob.glob(pth_to_inputfiles+'/*.json')
+        if len(flst)>0:
+            fl = flst[0]
         ### Read cyclopt input data
-        parameters = rf.read_json_file(abspth_to_fl=)
+        parameters = rf.read_json_file(abspth_to_fl=fl)
         filename_data = parameters.get('filename_data',None)
         if filename_data:
             pth_to_df = os.path.join(pth_to_inputfiles,filename_data)
