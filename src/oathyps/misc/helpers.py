@@ -74,3 +74,14 @@ def print_filelist(fllst, name=None):
         print(os.path.basename(item))#+'\n')
     return
 
+
+def mk_dir(pth=None,nm='',timestamp_format='ISO+md'):
+    if pth is None:
+        pth = os.getcwd()
+
+    tstmp = mk_timestamp_prefix(how=timestamp_format)
+    # make basic output directory
+    pth_out = os.path.join(pth, nm, tstmp)
+    os.makedirs(pth_out, exist_ok=True)
+
+    return pth_out
