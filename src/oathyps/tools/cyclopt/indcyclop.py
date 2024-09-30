@@ -201,11 +201,13 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
 
 
     ### Limit of parallel processes
-    def limit_parallel_processes(model,s,k):
+    def limit_parallel_processes(model,k):
         
-        return sum( model.actp_s_k[s,k] for s in model.S ) <= model.limparallel
+        # return sum( model.actp_s_k[s,k] for s in model.S ) <= model.limparallel
+
+        return sum(model.ws_r_k[s, r, k] for s in model.S for r in model.R) <= model.limparallel
     
-    model.ParallelLim = Constraint(model.S, model.K, rule=limit_parallel_processes)    
+    model.ParallelLim = Constraint( model.K, rule=limit_parallel_processes)
 
 
 

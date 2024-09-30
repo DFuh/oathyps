@@ -100,12 +100,17 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
         ### Read cyclopt input data
         parameters = rf.read_json_file(abspth_to_fl=fl)
         print('parameters: ', parameters)
-        filename_data = parameters.get('pth_to_data',None)
+        filename_data = parameters.get('filename_data',None)
+        filename_loadprofile = parameters.get('filename_loadprofile', None)
         if filename_data:
             pth_to_df = os.path.join(pth_to_inputfiles,filename_data)
             df = pd.read_csv(pth_to_df)
+            pth_to_lp = os.path.join(pth_to_inputfiles, filename_loadprofile)
+            lp_df = pd.read_csv(pth_to_lp)
             TN = len(df) if parameters.get('timerange',None) is None else parameters.get('timerange',None)
-            loadprofile = parameters.get('loadprofile', np.array([0, 0, 0, 10, 10, 10, 10, 0, 0]))
+
+            loadprofile = lp_df.cyclic_process.to_numpy()
+            # loadprofile = parameters.get('loadprofile', np.array([0, 0, 0, 10, 10, 10, 10, 0, 0]))
 
             model = ico.create_process_model(load_timeseries=df['load'].to_numpy(),
                                  price_timeseries=df['electricity_price'].to_numpy(),
