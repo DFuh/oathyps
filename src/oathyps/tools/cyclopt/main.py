@@ -10,7 +10,7 @@ import sys
 import numpy as np
 import pandas as pd
 import glob
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
@@ -105,11 +105,11 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
         if filename_data:
             pth_to_df = os.path.join(pth_to_inputfiles,filename_data)
             df = pd.read_csv(pth_to_df)
-            pth_to_lp = os.path.join(pth_to_inputfiles, filename_loadprofile)
-            lp_df = pd.read_csv(pth_to_lp)
+            pth_to_loadprofile = os.path.join(pth_to_inputfiles, filename_loadprofile)
+            df_loadprofile = pd.read_csv(pth_to_loadprofile)
             TN = len(df) if parameters.get('timerange',None) is None else parameters.get('timerange',None)
 
-            loadprofile = lp_df.cyclic_process.to_numpy()
+            loadprofile = df_loadprofile.cyclic_process.to_numpy()
             # loadprofile = parameters.get('loadprofile', np.array([0, 0, 0, 10, 10, 10, 10, 0, 0]))
 
             model = ico.create_process_model(load_timeseries=df['load'].to_numpy(),
