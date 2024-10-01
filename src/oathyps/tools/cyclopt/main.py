@@ -18,16 +18,10 @@ from oathyps.misc import helpers as hlp
 from oathyps.misc import readfiles as rf
 from oathyps.tools.cyclopt import indcyclop as ico, plotting as pplt
 
-usage = """Output an Energy System in Graphviz DOT format.
+usage = """
 
-Usage: python cyclopt.main.py SPREADSHEET_FILE
+Usage: python -m oathyps.tools.cyclopt.main [PATH_TO_INPUT_DIRECTORY [PATH_TO_OUTPUT_DIRECTORY]] 
 
- you'd have to use the sequence:
-
-    ```sh
-    python cyclopt.main.py PATH_TO_INPUT_DIRECTORY PATH_TO_OUTPUT_DIRECTORY
-    
-    ```
 """
 
 def default_setup(load_ones=False,price_ones=False):
