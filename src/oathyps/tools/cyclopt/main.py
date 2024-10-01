@@ -16,8 +16,7 @@ from pyomo.opt import SolverFactory
 
 from oathyps.misc import helpers as hlp
 from oathyps.misc import readfiles as rf
-import plotting as pplt
-from oathyps.tools.cyclopt import indcyclop as ico
+from oathyps.tools.cyclopt import indcyclop as ico, plotting as pplt
 
 usage = """Output an Energy System in Graphviz DOT format.
 
