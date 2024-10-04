@@ -1,7 +1,10 @@
 import os
+import requests
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import windpowerlib as wpl
+
 from oathyps.tools.wetea import clc as tea
 from oathyps.misc import readfiles as rf
 
@@ -9,6 +12,26 @@ def find_nearest(array, value):
     array = np.array(array)
     idx = (np.abs(array - value)).argmin()
     return array[idx]
+
+def read_default_data():
+    '''
+    Using example data from windpowerlib as default data
+    '''
+    req = requests.get("https://osf.io/59bqn/download")
+    with open("weather.csv", "wb") as fout:
+        fout.write(req.content)
+    weather_df = pd.read_csv("weather.csv",
+                             index_col=0,
+                             header=[0, 1],
+                             )
+    weather_df.index = pd.to_datetime(weather_df.index, utc=True)
+
+    # change time zone
+    weather_df.index = weather_df.index.tz_convert("Europe/Berlin")
+
+    turbine = wpl.WindTurbine(turbine_type="V164/8000", hub_height=150)
+    mc_turbine = wpl.ModelChain(turbine).run_model(weather_df)
+    return mc_turbine.power_output
 
 def plot_popt(df, plt_dct, anno_key='full_load_hours_we', anno_val=5000,
               key_x='rated_power_we', scale_x=1e-6, unit_x='GW', no_labels=True):
@@ -39,9 +62,16 @@ def plot_popt(df, plt_dct, anno_key='full_load_hours_we', anno_val=5000,
         anno_x = [0, anno_x_val,anno_x_val]
         anno_y_val = df[df[anno_key] == anno_val_exact][key].to_numpy()[0] * y_scl
         anno_y = [anno_y_val, anno_y_val,0]
-        ax.plot(anno_x, anno_y, linestyle='--', color='orangered')
-        ax.scatter(anno_x[1], anno_y[1], color='orangered', marker='x')
-
+        anno_y_max = df[anno_key].max()
+        ax.plot(anno_x, anno_y, linestyle='--', color='orangered',linewidth=1)
+        ax.scatter(anno_x[1], anno_y[1], color='orangered', marker='x', s=15)
+        ax.annotate(str(round(anno_y[1],1))+' '+plt_dct[key]['unit'],
+                    xy=(anno_x[1], anno_y[1]), xytext=(anno_x[1], anno_y[1]), #((anno_y[1]/anno_y_max)+0.05)*anno_y_max),
+                    fontsize=8, color='dimgrey',
+                    bbox=dict(boxstyle="square",
+                              fc="white", alpha=0.6, ec="none", lw=2)
+                    #arrowprops=dict(facecolor='black', shrink=0.05)
+                    )
         if not no_labels:
             ax.legend()
         ax.grid()
@@ -53,13 +83,6 @@ def plot_popt(df, plt_dct, anno_key='full_load_hours_we', anno_val=5000,
     plt.show()
     return fig
 
-class WE():
-
-    def __init__(self,):
-        pass
-
-    def efficiency(self,x, a1, B1, k1, a2, B2, k2):
-            return B1 * np.log(x + 1) / np.exp(a1 * x ** k1) + B2 * np.log(x + 1) / np.exp(a2 * x ** k2)
 
 def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', P_we_max=1, frc_P_we_min=0.1,
                                 P_sig_max=1,
@@ -190,17 +213,16 @@ def power_specific_key_values(df,we_obj=None, n_iterations=100, sig_column='P', 
     df_o = pd.DataFrame(dct)
     return df_o
 
+def run_popt(parameters='testingparameters.json'):
 
-if __name__ == '__main__':
+    we = None
 
-    parameters_eff_we = (10, 1, 1e-1, 30, 200, 1e-2)
-    we = WE()
+    path_params = rf.read_json_file(flnm=parameters)
 
-    default_path_params = rf.read_json_file(flnm='testingparameters.json')
+    pth_to_dir = path_params.get('path_input', input('Please enter path to file (directory)'))
+    flnm_df_in = path_params.get('filename', input('Please enter filename'))
+    pth_out = path_params.get('path_output', input('Please enter output directory'))
 
-    pth_to_dir = default_path_params.get('path_input',input('Please enter path to file (directory)'))
-    flnm_df_in = default_path_params.get('filename',input('Please enter filename'))
-    pth_out = default_path_params.get('path_output',input('Please enter output directory'))
     fl = os.path.join(pth_to_dir, flnm_df_in)
     df_in = pd.read_csv(fl)
     df_in['Date'] = pd.to_datetime(df_in.Date)
@@ -211,22 +233,26 @@ if __name__ == '__main__':
     print('columns: ', df_in.columns)
     df_in['tdelta'] = (df_in['Date'].diff().dt.seconds.div(3600, fill_value=0))
     df_ret = power_specific_key_values(df_in, we, n_iterations=100,
-                                           sig_column='P', P_we_max=1500e3,
-                                           P_sig_max=2e6,
-                                           frc_P_we_min=0.005,
-                                           efficiency_we_hhv=0.75,
-                                           par_eff_we=None, e_spc_h2=39.4,
-                                           capex_we_specific=500/20, opex_we_specific=12,
-                                           costs_stack_we_specific=0.5 * 500,
-                                           costs_electricity_spc=60e-3,  # €/kWh
-                                           lifetime_stack_we=50000,  # h
-                                           lifetime_plnt_we=20  # a
-                                           )
+                                       sig_column='P', P_we_max=1500e3,
+                                       P_sig_max=2e6,
+                                       frc_P_we_min=0.005,
+                                       efficiency_we_hhv=0.75,
+                                       par_eff_we=None, e_spc_h2=39.4,
+                                       capex_we_specific=500 / 20, opex_we_specific=12,
+                                       costs_stack_we_specific=0.5 * 500,
+                                       costs_electricity_spc=60e-3,  # €/kWh
+                                       lifetime_stack_we=50000,  # h
+                                       lifetime_plnt_we=20  # a
+                                       )
 
     plt_dct = {
         'energy_utilized_we': {'scl': 1e-9, 'unit': 'TWh', 'label': 'Utilized energy \n in \n ', 'limits': [0, 10]},
-        'full_load_hours_we': {'scl': 1, 'unit': 'h', 'label': 'Full Load\n Hours in \n ', 'limits': [0, 8700]},
+        'full_load_hours_we': {'scl': 1, 'unit': 'h', 'label': 'Full Load\n Hours in \n ', 'limits': [0, 8760]},
         'mass_hydrogen_produced': {'scl': 1e-6, 'unit': 'kt', 'label': 'Produced amount \n of hydrogen \n in \n ',
                                    'limits': [0, 150]},
         'lcoh': {'scl': 1, 'unit': '€/kg', 'label': 'LCOH \n in \n ', 'limits': [0, 10]}}
     fig = plot_popt(df_ret, plt_dct)
+    return {'figure':fig, 'df':df_ret}
+
+if __name__ == '__main__':
+    run_popt()
