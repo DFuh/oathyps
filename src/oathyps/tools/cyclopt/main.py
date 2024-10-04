@@ -105,8 +105,8 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             loadprofile = df_loadprofile.cyclic_process.to_numpy()
             # loadprofile = parameters.get('loadprofile', np.array([0, 0, 0, 10, 10, 10, 10, 0, 0]))
 
-            model = ico.create_process_model(load_timeseries=df['load'].to_numpy(),
-                                 price_timeseries=df['electricity_price'].to_numpy(),
+            model = ico.create_process_model(load_timeseries=df['residualload'].to_numpy(),
+                                 price_timeseries=df['price_electricity'].to_numpy(),
                                  number_of_eaf=parameters.get('number_of_processes',None),
                                     timerange=TN,
                                  loadprofile=loadprofile,
