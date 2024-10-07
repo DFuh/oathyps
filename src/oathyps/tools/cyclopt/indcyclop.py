@@ -147,7 +147,6 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
 
     ### Ensure sequence
 
-
     def ensure_sequence(model,s,r,k):
         if value(k)>0 and k <TN-1 and r<model.ds[s]-1: # and value(k) >= value(model.idxsp_s[s]) and value(k) <= value(model.idxsp_s[s])+model.ds[s]-1 and r<model.ds[s]-1:
     
@@ -165,19 +164,6 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
 
     model.fix_w_1 = Constraint(model.S, model.R,rule=fix_w1)
 
-    if False:
-        ### Initiate loadprofile
-        def fix_w3(model,s,k):
-            if k<TN-model.ds[s]:
-                return sum(model.ws_r_k[s,0,k] for k in model.K) >=1
-            else:
-                return Constraint.Skip
-        #model.fix_w_3 = Constraint(model.S,model.K, rule=fix_w3)
-
-    if False:
-        def fix_w4(model,s):
-            return sum(model.ws_r_k[s,r,k] for r in model.R for k in model.K) >=len(model.R)
-
 
     ### Fix Start
     def fix_w_start(model,s,r):
@@ -190,14 +176,6 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
         
         return model.ws_r_k[s,r,TN-1] ==0
     model.FixWEnd = Constraint(model.S,model.R,rule=fix_w_end)
-    
-
-    ### Index of production start
-    def production_idx(model,s):
-        
-        return model.idxsp_s[s] == sum(model.sp_s_k[s,k] * value(k)  for k in model.K)
-        
-    model.ProdIdx = Constraint(model.S, rule=production_idx)
 
 
     ### Limit of parallel processes
@@ -210,10 +188,6 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     model.ParallelLim = Constraint( model.K, rule=limit_parallel_processes)
 
 
-
-
-
-    
     return model
 
 
