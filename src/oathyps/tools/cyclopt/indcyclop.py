@@ -187,6 +187,69 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     
     model.ParallelLim = Constraint( model.K, rule=limit_parallel_processes)
 
+    ##########################################################################
+    ### Start Variable
+    def start0(model, s, k):
+        return model.sp_s_k[s, k] <= model.actp_s_k[s, k]
+
+    def start1(model, s, k):
+        if k > 0:
+            return model.sp_s_k[s, k] <= 1 - model.actp_s_k[s, k - 1]
+        else:
+            return Constraint.Skip
+
+    def start2(model, s, k):
+        if k > 0:
+            return model.actp_s_k[s, k] - model.actp_s_k[s, k - 1] <= model.sp_s_k[s, k]
+        else:
+            return Constraint.Skip
+
+    ### End Variable
+    def end0(model, s, k):
+        return model.ep_s_k[s, k] <= model.actp_s_k[s, k]
+
+    def end1(model, s, k):
+        if k < TN - 1:
+            return model.ep_s_k[s, k] <= 1 - model.actp_s_k[s, k + 1]
+        else:
+            return Constraint.Skip
+
+    def end2(model, s, k):
+        if k < TN - 1:
+            return model.actp_s_k[s, k] - model.actp_s_k[s, k + 1] <= model.ep_s_k[s, k]
+        else:
+            return Constraint.Skip
+
+    ### Activation
+    def act(model, s, k):
+        return model.actp_s_k[s, k] == sum(model.ws_r_k[s, r, k] for r in model.R)
+
+    ### bind on/off
+    def start_end_binding(model, s, k):
+        if k < TN - model.ds[s]:
+            return model.sp_s_k[s, k] == model.ep_s_k[s, k + model.ds[s] - 1]
+        else:
+            return Constraint.Skip
+
+    model.Start0 = Constraint(model.S, model.K, rule=start0)
+    model.Start1 = Constraint(model.S, model.K, rule=start1)
+    model.Start2 = Constraint(model.S, model.K, rule=start2)
+    model.End0 = Constraint(model.S, model.K, rule=end0)
+    model.End1 = Constraint(model.S, model.K, rule=end1)
+    model.End2 = Constraint(model.S, model.K, rule=end2)
+    model.Act = Constraint(model.S, model.K, rule=act)
+    model.BindStartEnd = Constraint(model.S, model.K, rule=start_end_binding)
+
+    ### Number of cycles
+    def numcyc(model):
+        return sum(model.sp_s_k[s, k] for s in model.S for k in model.K) == total_number_of_cycles
+
+    model.NumCyc = Constraint(rule=numcyc)
+
+    def numcyc2(model, r):
+        return sum(model.ws_r_k[s, r, k] for s in model.S for k in model.K) == total_number_of_cycles
+
+    model.NumCyc2 = Constraint(model.R, rule=numcyc2)
 
     return model
 
