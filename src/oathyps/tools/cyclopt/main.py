@@ -98,24 +98,29 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
         if filename_data:
             pth_to_df = os.path.join(pth_to_inputfiles,filename_data)
             df = pd.read_csv(pth_to_df)
+            df = df[1000:2000]
+            print('df: ', df.head())
             pth_to_loadprofile = os.path.join(pth_to_inputfiles, filename_loadprofile)
             df_loadprofile = pd.read_csv(pth_to_loadprofile)
             TN = len(df) if parameters.get('timerange',None) is None else parameters.get('timerange',None)
 
-            loadprofile = df_loadprofile.cyclic_process.to_numpy()
+            loadprofile = df_loadprofile.cyclic_process.to_numpy()/1e3
+            print('loadprofile: ', loadprofile)
             # loadprofile = parameters.get('loadprofile', np.array([0, 0, 0, 10, 10, 10, 10, 0, 0]))
 
-            model = ico.create_process_model(load_timeseries=df['residualload'].to_numpy(),
-                                 price_timeseries=df['price_electricity'].to_numpy(),
-                                 number_of_eaf=parameters.get('number_of_processes',None),
-                                    timerange=TN,
+            model = ico.create_process_model(load_timeseries=df['residualload'].to_numpy()/1e3+2e3,
+                                 price_timeseries=np.ones(len(df['price_electricity']))*0+1,#.to_numpy()/1,
+                                 number_of_processes=parameters.get('number_of_processes',None),
+                                total_number_of_cycles=parameters.get('total_number_of_cycles',None),
+                                             timerange=TN,
                                  loadprofile=loadprofile,
                                  target_power_level=parameters.get('P_target',{'val':0})['val'])
+
         else:
             print('Could not read file: ', filename_data)
     ### Solve
-    opt = SolverFactory('cbc')  # , solver_io="python")
-    x = opt.solve(model, tee=solver_verbose)
+    opt = SolverFactory('gurobi')  # , solver_io="python")
+    x = opt.solve(model, tee=solver_verbose,logfile=logfile)
     # log_infeasible_constraints(model)
 
     # model.display()
@@ -124,7 +129,7 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
     #    print(f'{i}: {x[i]}')
     # # print(value(model.obj))
 
-    pplt.plot_eaf_opt(model,pth_out=pth_figure)
+    pplt.plot_cyclopt_results(model,pth_out=pth_figure)
     return
 
     

@@ -11,7 +11,7 @@ from pyomo.environ import *
 
 ### Plotting
 
-def plot_eaf_opt(model, keys=[],printvals=False, pth_out=None):
+def plot_cyclopt_results(model, keys=[],printvals=False, pth_out=None):
     
     #if not keys:
     #    keys = ['P_res', 'P_s_k', '']
@@ -52,16 +52,21 @@ def plot_eaf_opt(model, keys=[],printvals=False, pth_out=None):
             w0.append(np.where(arr <=0,None, arr))
         l_w.append(w0)
         kl_w.append('w_srk_'+str(s))
-    
 
-    x = [np.arange(len(model.K))]*len(model.R)
-    sp_idx0 = value(model.sp_s_k[0,:])
-    sp_idx1 = value(model.sp_s_k[1,:]) 
-    act_idx0 = value(model.actp_s_k[0,:])
-    act_idx1 = value(model.actp_s_k[1,:])
+    x = [np.arange(len(model.K))] * len(model.R)
+    sp_idx0 = value(model.sp_s_k[0, :])
+    sp_idx1 = value(model.sp_s_k[1, :])
+    ep_idx0 = value(model.ep_s_k[0, :])
+    ep_idx1 = value(model.ep_s_k[1, :])
+    act_idx0 = value(model.actp_s_k[0, :])
+    act_idx1 = value(model.actp_s_k[1, :])
 
-    pltlst = [[P_price], [P_fix, P_res] + l_Psk, [P_diff, ], l_w]  # [sp_idx0,sp_idx1,act_idx0,act_idx1]]
-    keylst = [['P_price'], ['P_fix', 'P_res'] + kl_Psk, ['P_diff'], kl_w]
+    pltlst = [[P_price], [P_fix, P_res] + l_Psk, [P_diff, ], [sp_idx0, sp_idx1, act_idx0, act_idx1], [ep_idx0, ep_idx1],
+              l_w, ]  # [sp_idx0,sp_idx1,act_idx0,act_idx1]]
+    keylst = [['P_price'], ['P_fix', 'P_res'] + kl_Psk, ['P_diff'], ['sp0', 'sp1', 'act0', 'act1'], ['ep0', 'ep1'],
+              kl_w, ]  # ['sp_idx0','sp_idx1','act_idx0','act_idx1']]
+
+
     mrk0 = ['none','none','o','x','+','>','*']+['o','x','+','>','*']*int(len(model.S)/5)
     mrk = ['o','x','+','>','*']+['o','x','+','>','*']*int(len(model.S)/5)
     if True:
