@@ -6,7 +6,8 @@ Created on Thu Sep 26 13:36:13 2024
 @author: DFuh
 """
 import numpy as np
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+import pandas as pd
 from pyomo.environ import *
 
 ### Plotting
@@ -92,6 +93,24 @@ def plot_cyclopt_results(model, keys=[],printvals=False, pth_out=None):
         plt.show()
     if pth_out is not None:
         fig.savefig(pth_out)
+        w_dct = {k:v for (k,v) in zip(kl_w,l_w)}
+        P_dct = {k:v for (k,v) in zip(kl_Psk, l_Psk)}
+        dct_out = {'index': idx,
+                   'w_idx':x,
+                    'P_price':P_price,
+                    'P_fix':P_fix,
+                    'P_diff':P_diff,
+                    'P_res':P_res,
+                    'sp0':sp_idx0,
+                    'sp1':sp_idx1,
+                    'ep0':ep_idx0,
+                    'ep1':ep_idx1,
+                    'x0':act_idx0,
+                    'x1':act_idx1
+                    }
+        dct_out.update(P_dct)
+        dct_out.update(w_dct)
+        pd.DataFrame(dct_out).to_csv(pth_out.replace('fig','data').replace('.pdf','.csv'))
     return #x, ws_r_k0
 
 
