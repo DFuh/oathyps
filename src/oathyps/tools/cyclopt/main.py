@@ -70,6 +70,74 @@ def default_setup(load_ones=False,price_ones=False):
                          target_power_level=1000)
 
 
+def extract_decision_data(model,pth_out=''):
+
+    w = model.ws_r_k
+    varname = w.name
+    r = np.array(model.R.value)
+    print(w.name)
+    # make a pd.Series from each
+    s = pd.Series(w.extract_values(), index=w.extract_values().keys())
+    #r = pd.Series(r.extract_values(), index=r.extract_values().keys())
+
+    print('r: ', r)
+    # if the series is multi-indexed we need to unstack it...
+    if type(s.index[0]) == tuple:  # it is multi-indexed
+        s = s.unstack(level=1)
+        #print(s)
+    else:
+        s = pd.DataFrame(s)  # force transition from Series -> df
+    print(s.index.nlevels)
+    print(s.columns.nlevels)
+
+    if s.index.nlevels >1:
+       for lvl in  range(s.index.nlevels):
+        dfi = s.loc[0,:]
+        dfi = dfi.mask(dfi <=0)
+        if pth_out:
+            dfi.to_csv(pth_out.replace('data','df_'+varname+'_'+str(lvl)+'_'))
+        #print('1: ',s.loc[1, :].plot())
+    # multi-index the columns
+    # s.columns = pd.MultiIndex.from_tuples([(k, t) for k,t in s.columns])
+
+    #serieses.append(s)
+
+    return
+
+
+def extract_data(modelvariable,pth_out=''):
+
+    print(modelvariable.name)
+    # make a pd.Series from each
+    s = pd.Series(modelvariable.extract_values(), index=modelvariable.extract_values().keys())
+
+    # if the series is multi-indexed we need to unstack it...
+    if type(s.index[0]) == tuple:  # it is multi-indexed
+        s = s.unstack(level=1)
+        #print(s)
+    else:
+        s = pd.DataFrame(s)  # force transition from Series -> df
+    print(s.index.nlevels)
+    print(s.columns.nlevels)
+
+    if s.index.nlevels >1:
+       for lvl in  range(s.index.nlevels):
+        dfi = s.loc[0,:]
+        dfi = dfi.mask(dfi <=0)
+        if pth_out:
+            dfi.to_csv(pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_'))
+    else:
+        if pth_out:
+            s.to_csv(pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_'))
+        #print('1: ',s.loc[1, :].plot())
+    # multi-index the columns
+    # s.columns = pd.MultiIndex.from_tuples([(k, t) for k,t in s.columns])
+
+    #serieses.append(s)
+
+    return
+
+
 def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=True):
     ### Add possibility of reading external files
     ### setup
@@ -79,6 +147,7 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
         full_pth_outputfiles = hlp.mk_dir(pth_to_outputfiles,'out')
         logfile = os.path.join(full_pth_outputfiles,"cyclopt_solver.log")
         pth_figure=os.path.join(full_pth_outputfiles,"fig_cyclopt.pdf")
+        pth_data = os.path.join(full_pth_outputfiles,"data_cyclopt.csv")
     else:
         logfile=None
         full_pth_outputfiles = None
@@ -98,15 +167,20 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
         if filename_data:
             pth_to_df = os.path.join(pth_to_inputfiles,filename_data)
             df = pd.read_csv(pth_to_df)
-            df = df[1000:2000]
+            slc0 = parameters.get('slice_df_start',0)
+            slc1 = parameters.get('slice_df_end',len(df))
+            df = df[slc0:slc1] #[2000:2300]
             print('df: ', df.head())
             pth_to_loadprofile = os.path.join(pth_to_inputfiles, filename_loadprofile)
             df_loadprofile = pd.read_csv(pth_to_loadprofile)
             TN = len(df) if parameters.get('timerange',None) is None else parameters.get('timerange',None)
-
-            loadprofile = df_loadprofile.cyclic_process.to_numpy()/1e3
+            slc_lop_0 = parameters.get('slice_loadprofile_start', 0)
+            slc_lop_1 = parameters.get('slice_loadprofile_end', len(df_loadprofile))
+            slc_lop_1  = min(len(df_loadprofile),slc_lop_1)
+            loadprofile = df_loadprofile[slc_lop_0:slc_lop_1].cyclic_process.to_numpy()/1e3
             print('loadprofile: ', loadprofile)
             # loadprofile = parameters.get('loadprofile', np.array([0, 0, 0, 10, 10, 10, 10, 0, 0]))
+
 
             model = ico.create_process_model(load_timeseries=df['residualload'].to_numpy()/1e3+2e3,
                                  price_timeseries=np.ones(len(df['price_electricity']))*0+1,#.to_numpy()/1,
@@ -119,7 +193,9 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
         else:
             print('Could not read file: ', filename_data)
     ### Solve
-    opt = SolverFactory('gurobi')  # , solver_io="python")
+
+    solver = parameters.get('solver','cbc')
+    opt = SolverFactory(solver)
     x = opt.solve(model, tee=solver_verbose,logfile=logfile)
     # log_infeasible_constraints(model)
 
@@ -128,7 +204,9 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
     # for i in x:
     #    print(f'{i}: {x[i]}')
     # # print(value(model.obj))
-
+    extract_decision_data(model,pth_out=pth_data)
+    # extract_data(model.ws_r_k, pth_out=pth_data)
+    # print('ws_r_k: ', model.ws_r_k[0,0,:].extract_values())
     pplt.plot_cyclopt_results(model,pth_out=pth_figure)
     return
 

@@ -91,7 +91,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
 
     ### check P_abs
     def check_pabs(model, k):
-        return model.testv_k[k] == (2 * (model.auxvar0[k] + model.auxvar1[k])) * model.P_price[k]  # (model.P_res[k]-model.P_tar)
+        return model.testv_k[k] == (2 * (model.auxvar0[k] + model.auxvar1[k])) * model.P_price[k] # (model.P_res[k]-model.P_tar)
 
     model.CheckPdiff = Constraint(model.K, rule=check_pabs)
 
