@@ -128,7 +128,7 @@ def extract_data(modelvariable,pth_out=''):
             dfi.to_csv(pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_'))
     else:
         if pth_out:
-            s.to_csv(pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_'))
+            s.to_csv(pth_out.replace('data','df_'+modelvariable.name+'_'))
         #print('1: ',s.loc[1, :].plot())
     # multi-index the columns
     # s.columns = pd.MultiIndex.from_tuples([(k, t) for k,t in s.columns])
@@ -205,6 +205,10 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
     #    print(f'{i}: {x[i]}')
     # # print(value(model.obj))
     extract_decision_data(model,pth_out=pth_data)
+    lst_data = [model.P_quart,model.P_s_k]
+    for varnm in lst_data:
+        extract_data(varnm,pth_out=pth_data)
+
     # extract_data(model.ws_r_k, pth_out=pth_data)
     # print('ws_r_k: ', model.ws_r_k[0,0,:].extract_values())
     pplt.plot_cyclopt_results(model,pth_out=pth_figure)

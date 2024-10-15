@@ -24,7 +24,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
                             number_of_processes=2,total_number_of_cycles=2,
                             timerange=30,loadprofile=[0,1,1,0],
                             target_power_level=0):
-    TN = timerange
+    TN = len(load_timeseries)
     ls = number_of_processes
     #loadprofile = eaf_loadprofile
 
@@ -35,8 +35,8 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     model = ConcreteModel()
 
     ### Sets
-    model.S = Set(initialize=np.arange(ls))  # Beispielhafte Systeme
-    model.R = Set(initialize=np.arange(len(loadprofile)))  # [1, 2, 3])  # Beispielhafte Stufen
+    model.S = Set(initialize=np.arange(ls))  # Systems
+    model.R = Set(initialize=np.arange(len(loadprofile))) # Steps
 
     model.K = Set(initialize=np.arange(TN))  # [1, 2, 3, 4])  # Beispielhafte Zeitintervalle
 
@@ -49,7 +49,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     model.P_fix = Param(model.K, initialize=load_timeseries)
     model.P_price = Param(model.K, initialize=price_timeseries)
 
-    ### Variablen
+    ### Variables
     model.P_s_k = Var(model.S, model.K, within=NonNegativeReals)
     model.P_res = Var(model.K, within=NonNegativeReals)
 
