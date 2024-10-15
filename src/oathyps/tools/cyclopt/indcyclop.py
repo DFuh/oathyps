@@ -38,9 +38,19 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     model.S = Set(initialize=np.arange(ls))  # Systems
     model.R = Set(initialize=np.arange(len(loadprofile))) # Steps
 
-    model.K = Set(initialize=np.arange(TN))  # [1, 2, 3, 4])  # Beispielhafte Zeitintervalle
+    timeindex = np.arange(TN)
+    timeindex_l = np.arange(TN+1)
+    timeindex_quarterly = timeindex_l[timeindex_l % 15 == 0]
+    print('t_idx_q: ', timeindex_quarterly)
+    model.K = Set(initialize=timeindex)  # Timeindex
+    model.Kq = Set(initialize=np.arange(len(timeindex_quarterly)))  # k-quarterly
 
     ### Parameters
+    model.aux_kq = Param(model.Kq,initialize=timeindex_quarterly,within=NonNegativeIntegers)
+    model.aux_gs_M = Param(initialize=1e6)
+    model.gs_price_energy = Param(initialize=0.34 / 1e2)  # €/kWh
+    model.gs_price_power = Param(initialize=107.08)  # €/kW
+
     model.fs_r = Param(model.S, model.R, initialize=f_par)
     model.ds = Param(model.S, initialize=[len(loadprofile)] * ls)
     model.prodmin = Param(initialize=ls)
@@ -72,8 +82,16 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
                         # initialize=constr2d(np.array([np.zeros(model.K.__len__()),np.zeros(model.K.__len__())])),
                         # within=NonNegativeReals
                         )
-
+    model.penalty = Var(model.K, within=Reals)
     model.testv_k = Var(model.K, )
+
+
+
+    model.aux_gs_b = Var(model.Kq,within=Binary)
+    model.P_quart = Var(model.Kq,within=Reals)
+    model.P_max_quart =Var()
+    model.Costs_surcharges = Var()
+
 
     ###########################################################################
     ### Objective function
@@ -81,7 +99,8 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
 
     def objective_rule(model):
 
-        return sum((2 * (model.auxvar0[k] + model.auxvar1[k])) * model.P_price[k] for k in model.K)#
+        return (#sum( ((2 * (model.auxvar0[k] + model.auxvar1[k]))) * model.P_price[k]   for k in model.K)
+                + model.Costs_surcharges)
 
     model.Objective = Objective(rule=objective_rule, sense=minimize)
 
@@ -101,6 +120,50 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
         return model.auxvar0[k] - model.auxvar1[k] == (model.P_res[k] - model.P_tar)
 
     model.AbsPdiff = Constraint(model.K, rule=absolute_value_Pdiff)
+
+
+    ### Grid surcharges
+    def gridsurcharges(model):
+
+        return model.Costs_surcharges == (sum(model.P_res[k]/60 * model.gs_price_energy for k in model.K)
+                        + model.P_max_quart * model.gs_price_power)
+
+
+    def gs_power_quarterly(model,kq):
+        if model.aux_kq[kq] < TN:
+            return model.P_quart[kq] == sum(model.P_res[k] for k in model.K if value(k)>= model.aux_kq[kq] and value(k)<= model.aux_kq[kq+1])/15
+        else:
+            return Constraint.Skip
+
+    def gs_power_quarterly0(model,kq):
+
+        return model.P_max_quart >= model.P_quart[kq]
+
+    def gs_power_quarterly1(model, kq):
+
+        return model.P_max_quart <= model.P_quart[kq] + (1-model.aux_gs_b[kq])*model.aux_gs_M
+
+    def gs_power_quarterly2(model):
+
+        return sum(model.aux_gs_b[kq] for kq in model.Kq) == 1
+
+    model.GridSurcharges = Constraint(rule=gridsurcharges)
+    model.gs_PowerQuart = Constraint(model.Kq, rule=gs_power_quarterly)
+    model.gs_PowerQuart0 = Constraint(model.Kq, rule=gs_power_quarterly0)
+    model.gs_PowerQuart1 = Constraint(model.Kq, rule=gs_power_quarterly1)
+    model.gs_PowerQuart2 = Constraint(rule=gs_power_quarterly2)
+
+
+    ### Penalty constraint
+    def maxloadpenalty(model,k):
+        #if value(model.P_res[k]) <= 500:#value(model.P_tar):
+        #    return model.penalty[k] ==0
+        #elif value(model.P_res[k]) <= 1000:#value(model.P_tar)*1.1:
+        #    return model.penalty[k] == 10000
+        #else:
+        #    return model.penalty[k] == 20000
+        return model.penalty[k] == (model.P_res[k] - 1300)*10000
+    #model.MaxLoadPenalty = Constraint(model.K,rule=maxloadpenalty)
 
     ### Resulting Power
     def resulting_power(model, k):
