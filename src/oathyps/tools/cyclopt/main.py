@@ -171,6 +171,15 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             slc1 = parameters.get('slice_df_end',len(df))
             df = df[slc0:slc1] #[2000:2300]
             print('df: ', df.head())
+
+            fctr_price_electricity = parameters.get('factor_price_electricity',1)
+            offset_price_electricity = parameters.get('offset_price_electricity', 0)
+            timeseries_price_electricity = df['price_electricity'].to_numpy() * fctr_price_electricity + offset_price_electricity
+
+            fctr_residualload = parameters.get('factor_residualload', 1)
+            offset_residualload = parameters.get('offset_residualload', 0)
+            timeseries_residualload = df['residualload'].to_numpy() * fctr_residualload + offset_residualload
+
             pth_to_loadprofile = os.path.join(pth_to_inputfiles, filename_loadprofile)
             df_loadprofile = pd.read_csv(pth_to_loadprofile)
             TN = len(df) if parameters.get('timerange',None) is None else parameters.get('timerange',None)
@@ -182,8 +191,8 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             # loadprofile = parameters.get('loadprofile', np.array([0, 0, 0, 10, 10, 10, 10, 0, 0]))
 
 
-            model = ico.create_process_model(load_timeseries=df['residualload'].to_numpy()/1e3+2e3,
-                                 price_timeseries=np.ones(len(df['price_electricity']))*0+1,#.to_numpy()/1,
+            model = ico.create_process_model(load_timeseries=timeseries_residualload,
+                                 price_timeseries=timeseries_price_electricity,
                                  number_of_processes=parameters.get('number_of_processes',None),
                                 total_number_of_cycles=parameters.get('total_number_of_cycles',None),
                                              timerange=TN,
