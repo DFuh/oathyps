@@ -91,6 +91,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     model.P_quart = Var(model.Kq,within=Reals)
     model.P_max_quart =Var()
     model.Costs_surcharges = Var()
+    model.Costs_powerdev = Var()
 
 
     ###########################################################################
@@ -121,6 +122,11 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
 
     model.AbsPdiff = Constraint(model.K, rule=absolute_value_Pdiff)
 
+    ### Absolute power deviation
+    def abspowerdev(model):
+        return model.Costs_powerdev == sum(((2 * (model.auxvar0[k] + model.auxvar1[k]))) * model.P_price[k] for k in model.K)
+
+    model.CPowerDev = Constraint(rule=abspowerdev)
 
     ### Grid surcharges
     def gridsurcharges(model):
