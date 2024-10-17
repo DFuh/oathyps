@@ -122,7 +122,7 @@ def extract_data(modelvariable,pth_out=''):
 
     if s.index.nlevels >1:
        for lvl in  range(s.index.nlevels):
-        dfi = s.loc[0,:]
+        dfi = s.loc[lvl,:]
         dfi = dfi.mask(dfi <=0)
         if pth_out:
             dfi.to_csv(pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_'))
