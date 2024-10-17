@@ -197,7 +197,9 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
                                 total_number_of_cycles=parameters.get('total_number_of_cycles',None),
                                              timerange=TN,
                                  loadprofile=loadprofile,
-                                 target_power_level=parameters.get('P_target',{'val':0})['val'])
+                                 target_power_level=parameters.get('P_target',{'val':0})['val'],
+                                 enable_obj_powerdeviation=parameters.get("enable_obj_powerdeviation",1),
+                                 enable_obj_surcharges=parameters.get("enable_obj_surcharges",0))
 
         else:
             print('Could not read file: ', filename_data)

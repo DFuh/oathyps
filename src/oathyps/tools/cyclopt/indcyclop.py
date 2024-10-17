@@ -23,7 +23,9 @@ def constr2d(data):
 def create_process_model(load_timeseries=None, price_timeseries=None,
                             number_of_processes=2,total_number_of_cycles=2,
                             timerange=30,loadprofile=[0,1,1,0],
-                            target_power_level=0):
+                            target_power_level=0,
+                            enable_obj_powerdeviation=1,
+                            enable_obj_surcharges=0):
     TN = len(load_timeseries)
     ls = number_of_processes
     #loadprofile = eaf_loadprofile
@@ -100,8 +102,8 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
 
     def objective_rule(model):
 
-        return (model.Costs_powerdev * parameter.get("enable_obj_powerdeviation",True)
-                + model.Costs_surcharges * parameter.get("enable_obj_surcharges",True)
+        return (model.Costs_powerdev * enable_obj_powerdeviation
+                + model.Costs_surcharges * enable_obj_surcharges
                 )
 
     model.Objective = Objective(rule=objective_rule, sense=minimize)
