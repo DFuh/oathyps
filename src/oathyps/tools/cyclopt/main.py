@@ -216,14 +216,18 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
     #    print(f'{i}: {x[i]}')
     # # print(value(model.obj))
     extract_decision_data(model,pth_out=pth_data)
-    lst_data = [model.P_quart,model.P_s_k]
+    lst_data = parameters.get('extract_data',[])
     for varnm in lst_data:
-        extract_data(varnm,pth_out=pth_data)
+        var = getattr(model,varnm, None)
+        if var is not None:
+            extract_data(var,pth_out=pth_data)
+        else:
+            print('Could not extract: ', varnm)
 
     # extract_data(model.ws_r_k, pth_out=pth_data)
     # print('ws_r_k: ', model.ws_r_k[0,0,:].extract_values())
     pplt.plot_cyclopt_results(model,pth_out=pth_figure)
-    return
+    return model
 
     
 
