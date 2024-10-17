@@ -100,8 +100,9 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
 
     def objective_rule(model):
 
-        return (#sum( ((2 * (model.auxvar0[k] + model.auxvar1[k]))) * model.P_price[k]   for k in model.K)
-                + model.Costs_surcharges)
+        return (model.Costs_powerdev * parameter.get("enable_obj_powerdeviation",True)
+                + model.Costs_surcharges * parameter.get("enable_obj_surcharges",True)
+                )
 
     model.Objective = Objective(rule=objective_rule, sense=minimize)
 
