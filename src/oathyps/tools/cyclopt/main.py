@@ -63,10 +63,10 @@ def default_setup(load_ones=False,price_ones=False):
     
 
     
-    return cyclopt.create_process_model(load_timeseries=fixed_load,
+    return ico.create_process_model(load_timeseries=fixed_load,
                                     price_timeseries=fixed_price,
-                         number_of_eaf=2,timerange=30,
-                         eaf_loadprofile=loadprofile,
+                         number_of_processes=2,timerange=30,
+                         loadprofile=loadprofile,
                          target_power_level=1000)
 
 
