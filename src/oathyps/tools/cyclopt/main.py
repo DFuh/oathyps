@@ -95,7 +95,8 @@ def extract_decision_data(model,pth_out=''):
         dfi = s.loc[0,:]
         dfi = dfi.mask(dfi <=0)
         if pth_out:
-            dfi.to_csv(pth_out.replace('data','df_'+varname+'_'+str(lvl)+'_'))
+            filepath = pth_out.replace('data','df_'+varname+'_'+str(lvl)+'_')
+            dfi.to_csv(filepath)
         #print('1: ',s.loc[1, :].plot())
     # multi-index the columns
     # s.columns = pd.MultiIndex.from_tuples([(k, t) for k,t in s.columns])
@@ -125,10 +126,12 @@ def extract_data(modelvariable,pth_out=''):
         dfi = s.loc[lvl,:]
         dfi = dfi.mask(dfi <=0)
         if pth_out:
-            dfi.to_csv(pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_'))
+            filepath = pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_')
+            dfi.to_csv(filepath)
     else:
         if pth_out:
-            s.to_csv(pth_out.replace('data','df_'+modelvariable.name+'_'))
+            filepath = pth_out.replace('data','df_'+modelvariable.name+'_')
+            s.to_csv(filepath)
         #print('1: ',s.loc[1, :].plot())
     # multi-index the columns
     # s.columns = pd.MultiIndex.from_tuples([(k, t) for k,t in s.columns])
@@ -142,26 +145,34 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
     ### Add possibility of reading external files
     ### setup
 
+    ### Read parameters
+    flst = glob.glob(pth_to_inputfiles + '/*.json')
+    if len(flst) > 0:
+        parameters = rf.read_json_file(abspth_to_fl=flst[0])
+    else:
+        parameters = None
+
+
+
+
+
+
     ### File output
     if pth_to_outputfiles != False:
         full_pth_outputfiles = hlp.mk_dir(pth_to_outputfiles,'out')
-        logfile = os.path.join(full_pth_outputfiles,"cyclopt_solver.log")
+        logfile = os.path.join(full_pth_outputfiles, "cyclopt.log")
+        logfile_solver = os.path.join(full_pth_outputfiles,"cyclopt_solver.log")
         pth_figure=os.path.join(full_pth_outputfiles,"fig_cyclopt.pdf")
         pth_data = os.path.join(full_pth_outputfiles,"data_cyclopt.csv")
     else:
-        logfile=None
+        logfile = None
+        logfile_solver=None
         full_pth_outputfiles = None
         pth_figure = None
-
-    if not pth_to_inputfiles:
+    if parameters is None:
         model = default_setup()
+        parameters = {}
     else:
-        flst = glob.glob(pth_to_inputfiles+'/*.json')
-        if len(flst)>0:
-            fl = flst[0]
-        ### Read cyclopt input data
-        parameters = rf.read_json_file(abspth_to_fl=fl)
-        print('parameters: ', parameters)
         filename_data = parameters.get('filename_data',None)
         filename_loadprofile = parameters.get('filename_loadprofile', None)
         if filename_data:
@@ -187,15 +198,12 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             slc_lop_1 = parameters.get('slice_loadprofile_end', len(df_loadprofile))
             slc_lop_1  = min(len(df_loadprofile),slc_lop_1)
             loadprofile = df_loadprofile[slc_lop_0:slc_lop_1].cyclic_process.to_numpy()/1e3
-            print('loadprofile: ', loadprofile)
-            # loadprofile = parameters.get('loadprofile', np.array([0, 0, 0, 10, 10, 10, 10, 0, 0]))
-
 
             model = ico.create_process_model(load_timeseries=timeseries_residualload,
                                  price_timeseries=timeseries_price_electricity,
                                  number_of_processes=parameters.get('number_of_processes',None),
-                                total_number_of_cycles=parameters.get('total_number_of_cycles',None),
-                                             timerange=TN,
+                                 total_number_of_cycles=parameters.get('total_number_of_cycles',None),
+                                 timerange=TN,
                                  loadprofile=loadprofile,
                                  target_power_level=parameters.get('P_target',{'val':0})['val'],
                                  enable_obj_powerdeviation=parameters.get("enable_obj_powerdeviation",1),
@@ -205,28 +213,37 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             print('Could not read file: ', filename_data)
     ### Solve
 
-    solver = parameters.get('solver','cbc')
-    opt = SolverFactory(solver)
-    x = opt.solve(model, tee=solver_verbose,logfile=logfile)
-    # log_infeasible_constraints(model)
 
-    # model.display()
+    ### Solve
+    if model is not None:
+        solver = parameters.get('solver','cbc')
 
-    # for i in x:
-    #    print(f'{i}: {x[i]}')
-    # # print(value(model.obj))
-    extract_decision_data(model,pth_out=pth_data)
-    lst_data = parameters.get('extract_data',[])
-    for varnm in lst_data:
-        var = getattr(model,varnm, None)
-        if var is not None:
-            extract_data(var,pth_out=pth_data)
-        else:
-            print('Could not extract: ', varnm)
+        opt = SolverFactory(solver,)
+        #opt.setParam('OptimalityTol',6e-1)
+        opt.options['OptimalityTol'] = 0.01
 
-    # extract_data(model.ws_r_k, pth_out=pth_data)
-    # print('ws_r_k: ', model.ws_r_k[0,0,:].extract_values())
-    pplt.plot_cyclopt_results(model,pth_out=pth_figure)
+        #opt.options['IterationLimit'] = 400e3
+        #solver.options['max_iter'] = 40e3
+        x = opt.solve(model, tee=solver_verbose,logfile=logfile_solver, )
+        # log_infeasible_constraints(model)
+
+        # model.display()
+
+        # for i in x:
+        #    print(f'{i}: {x[i]}')
+        # # print(value(model.obj))
+        extract_decision_data(model,pth_out=pth_data)
+        lst_data = parameters.get('extract_data',[])
+        for varnm in lst_data:
+            var = getattr(model,varnm, None)
+            if var is not None:
+                extract_data(var,pth_out=pth_data)
+            else:
+                logger.info("Could not extract: {}", varnm)
+
+        # extract_data(model.ws_r_k, pth_out=pth_data)
+        # print('ws_r_k: ', model.ws_r_k[0,0,:].extract_values())
+        pplt.plot_cyclopt_results(model,pth_out=pth_figure)
     return model
 
     
