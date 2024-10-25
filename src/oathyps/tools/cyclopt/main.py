@@ -10,6 +10,7 @@ import sys
 import numpy as np
 import pandas as pd
 import glob
+from loguru import logger
 import matplotlib.pyplot as plt
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
@@ -25,6 +26,8 @@ Usage: python -m oathyps.tools.cyclopt.main [PATH_TO_INPUT_DIRECTORY [PATH_TO_OU
 """
 
 def default_setup(load_ones=False,price_ones=False):
+    logger.info("Default model setup.")
+
     # loadprofile = np.array([0,0,0,10,12,9,0,0,0])*90
     # loadprofile = np.array([8,9,10,12,12,12,5,4,4])*90
     loadprofile = np.array([0,0,0,12,12,12,12,0,0])*90
@@ -75,20 +78,20 @@ def extract_decision_data(model,pth_out=''):
     w = model.ws_r_k
     varname = w.name
     r = np.array(model.R.value)
-    print(w.name)
+    logger.info("Extract data for decision variable {}",w.name)
     # make a pd.Series from each
     s = pd.Series(w.extract_values(), index=w.extract_values().keys())
     #r = pd.Series(r.extract_values(), index=r.extract_values().keys())
 
-    print('r: ', r)
+    logger.trace('Index r: {r}')
     # if the series is multi-indexed we need to unstack it...
     if type(s.index[0]) == tuple:  # it is multi-indexed
         s = s.unstack(level=1)
-        #print(s)
+
     else:
         s = pd.DataFrame(s)  # force transition from Series -> df
-    print(s.index.nlevels)
-    print(s.columns.nlevels)
+    logger.trace("Index levels in variable: {}",s.index.nlevels)
+    logger.trace("Column levels in variable: {}",s.columns.nlevels)
 
     if s.index.nlevels >1:
        for lvl in  range(s.index.nlevels):
@@ -96,6 +99,7 @@ def extract_decision_data(model,pth_out=''):
         dfi = dfi.mask(dfi <=0)
         if pth_out:
             filepath = pth_out.replace('data','df_'+varname+'_'+str(lvl)+'_')
+            logger.info("Write file: {}",filepath)
             dfi.to_csv(filepath)
         #print('1: ',s.loc[1, :].plot())
     # multi-index the columns
@@ -105,10 +109,34 @@ def extract_decision_data(model,pth_out=''):
 
     return
 
+def mk_output_dataframes():
+    w_dct = {k: v for (k, v) in zip(kl_w, l_w)}
+    P_dct = {k: v for (k, v) in zip(kl_Psk, l_Psk)}
+    dct_out = {'index': idx,
+
+               'P_price': P_price,
+               'P_fix': P_fix,
+               'P_diff': P_diff,
+               'P_res': P_res,
+               'sp0': sp_idx0,
+               'sp1': sp_idx1,
+               'ep0': ep_idx0,
+               'ep1': ep_idx1,
+               'x0': act_idx0,
+               'x1': act_idx1
+               }
+
+    P_dct.update({'idx': idx})
+    w_dct.update({'w_idx': x})
+    pd.DataFrame.from_dict(dct_out).to_csv(pth_out.replace('fig', 'data').replace('.pdf', '.csv'))
+    pd.DataFrame.from_dict(w_dct).fillna(-99).to_csv(pth_out.replace('fig', 'w_data').replace('.pdf', '.csv'))
+    pd.DataFrame.from_dict(P_dct).to_csv(pth_out.replace('fig', 'P_data').replace('.pdf', '.csv'))
+
+    return
 
 def extract_data(modelvariable,pth_out=''):
 
-    print(modelvariable.name)
+    logger.info("Generate model output for attribute: {}",modelvariable.name)
     # make a pd.Series from each
     s = pd.Series(modelvariable.extract_values(), index=modelvariable.extract_values().keys())
 
@@ -118,8 +146,8 @@ def extract_data(modelvariable,pth_out=''):
         #print(s)
     else:
         s = pd.DataFrame(s)  # force transition from Series -> df
-    print(s.index.nlevels)
-    print(s.columns.nlevels)
+    logger.trace("Index levels in variable: {}",s.index.nlevels)
+    logger.trace("Column levels in variable: {}",s.columns.nlevels)
 
     if s.index.nlevels >1:
        for lvl in  range(s.index.nlevels):
@@ -127,10 +155,12 @@ def extract_data(modelvariable,pth_out=''):
         dfi = dfi.mask(dfi <=0)
         if pth_out:
             filepath = pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_')
+            logger.info("Write {} data to file: \n {}",modelvariable.name,filepath)
             dfi.to_csv(filepath)
     else:
         if pth_out:
             filepath = pth_out.replace('data','df_'+modelvariable.name+'_')
+            logger.info('Write {} data to file: \n {}',modelvariable.name,filepath)
             s.to_csv(filepath)
         #print('1: ',s.loc[1, :].plot())
     # multi-index the columns
@@ -146,18 +176,22 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
     ### setup
 
     ### Read parameters
+    logger.info("Read parameters")
     flst = glob.glob(pth_to_inputfiles + '/*.json')
     if len(flst) > 0:
         parameters = rf.read_json_file(abspth_to_fl=flst[0])
+        logger.info("Use parameters: {}",flst[0])
     else:
         parameters = None
 
+    logger.debug("Parameters: {}",parameters)
 
 
 
 
 
     ### File output
+    logger.info("Initialize file output.")
     if pth_to_outputfiles != False:
         full_pth_outputfiles = hlp.mk_dir(pth_to_outputfiles,'out')
         logfile = os.path.join(full_pth_outputfiles, "cyclopt.log")
@@ -169,6 +203,8 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
         logfile_solver=None
         full_pth_outputfiles = None
         pth_figure = None
+    logger.add(logfile)
+    logger.info("Setup cyclic process optimization.")
     if parameters is None:
         model = default_setup()
         parameters = {}
@@ -180,8 +216,9 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             df = pd.read_csv(pth_to_df)
             slc0 = parameters.get('slice_df_start',0)
             slc1 = parameters.get('slice_df_end',len(df))
+            logger.info("Slice df: Start = {} || End = {}",slc0,slc1)
             df = df[slc0:slc1] #[2000:2300]
-            print('df: ', df.head())
+            logger.debug('df (head): {}', df.head())
 
             fctr_price_electricity = parameters.get('factor_price_electricity',1)
             offset_price_electricity = parameters.get('offset_price_electricity', 0)
@@ -191,14 +228,17 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             offset_residualload = parameters.get('offset_residualload', 0)
             timeseries_residualload = df['residualload'].to_numpy() * fctr_residualload + offset_residualload
 
+
             pth_to_loadprofile = os.path.join(pth_to_inputfiles, filename_loadprofile)
             df_loadprofile = pd.read_csv(pth_to_loadprofile)
             TN = len(df) if parameters.get('timerange',None) is None else parameters.get('timerange',None)
             slc_lop_0 = parameters.get('slice_loadprofile_start', 0)
             slc_lop_1 = parameters.get('slice_loadprofile_end', len(df_loadprofile))
             slc_lop_1  = min(len(df_loadprofile),slc_lop_1)
+            logger.info("Slice loadprofile: Start = {} End = {}",slc_lop_0,slc_lop_1)
             loadprofile = df_loadprofile[slc_lop_0:slc_lop_1].cyclic_process.to_numpy()/1e3
 
+            logger.info("Create model.")
             model = ico.create_process_model(load_timeseries=timeseries_residualload,
                                  price_timeseries=timeseries_price_electricity,
                                  number_of_processes=parameters.get('number_of_processes',None),
@@ -210,13 +250,13 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
                                  enable_obj_surcharges=parameters.get("enable_obj_surcharges",0))
 
         else:
-            print('Could not read file: ', filename_data)
-    ### Solve
+            logger.info("Could not read file: {}",filename_data)
 
 
     ### Solve
     if model is not None:
         solver = parameters.get('solver','cbc')
+        logger.info("Initialize solver: {}",solver)
 
         opt = SolverFactory(solver,)
         #opt.setParam('OptimalityTol',6e-1)
@@ -224,6 +264,7 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
 
         #opt.options['IterationLimit'] = 400e3
         #solver.options['max_iter'] = 40e3
+        logger.info("Start solving model")
         x = opt.solve(model, tee=solver_verbose,logfile=logfile_solver, )
         # log_infeasible_constraints(model)
 
@@ -244,6 +285,9 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
         # extract_data(model.ws_r_k, pth_out=pth_data)
         # print('ws_r_k: ', model.ws_r_k[0,0,:].extract_values())
         pplt.plot_cyclopt_results(model,pth_out=pth_figure)
+    else:
+        logger.info(" -- Abort optimization")
+    logger.info(" - End - ")
     return model
 
     
@@ -260,7 +304,7 @@ if __name__ == '__main__':
         input_pth = sys.argv[1]
         output_pth = None
 
-
+    logger.info("Run cyclopt main")
     run_copt(pth_to_inputfiles=input_pth,pth_to_outputfiles=output_pth)
     
 

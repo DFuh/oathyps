@@ -6,6 +6,7 @@ Created on Thu Sep 26 13:41:57 2024
 @author: DFuh
 """
 import numpy as np
+from loguru import logger
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 from pyomo.util.infeasible import log_infeasible_constraints
@@ -26,28 +27,33 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
                             target_power_level=0,
                             enable_obj_powerdeviation=1,
                             enable_obj_surcharges=0):
+
+    logger.info("Create process (optimization) model")
+
     TN = len(load_timeseries)
     ls = number_of_processes
     #loadprofile = eaf_loadprofile
 
     f_par = constr2d(np.array([loadprofile] * ls))
 
-    print('Setup model')
+    logger.info("Setup concrete model")
     ### Create pyomo model
     model = ConcreteModel()
 
     ### Sets
+    logger.debug("Ini Sets")
     model.S = Set(initialize=np.arange(ls))  # Systems
     model.R = Set(initialize=np.arange(len(loadprofile))) # Steps
 
     timeindex = np.arange(TN)
     timeindex_l = np.arange(TN+1)
     timeindex_quarterly = timeindex_l[timeindex_l % 15 == 0]
-    print('t_idx_q: ', timeindex_quarterly)
+    logger.trace("t_idx_q: {}", timeindex_quarterly)
     model.K = Set(initialize=timeindex)  # Timeindex
     model.Kq = Set(initialize=np.arange(len(timeindex_quarterly)))  # k-quarterly
 
     ### Parameters
+    logger.debug("Ini Parameters")
     model.aux_kq = Param(model.Kq,initialize=timeindex_quarterly,within=NonNegativeIntegers)
     model.aux_gs_M = Param(initialize=1e6)
     model.gs_price_energy = Param(initialize=0.34 / 1e2)  # €/kWh
@@ -62,6 +68,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     model.P_price = Param(model.K, initialize=price_timeseries)
 
     ### Variables
+    logger.debug("Ini Variables")
     model.P_s_k = Var(model.S, model.K, within=NonNegativeReals)
     model.P_res = Var(model.K, within=NonNegativeReals)
 
@@ -99,7 +106,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     ###########################################################################
     ### Objective function
     ######################################
-
+    logger.debug("Ini Objective")
     def objective_rule(model):
 
         return (model.Costs_powerdev * enable_obj_powerdeviation
@@ -111,12 +118,15 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     ###########################################################################
     ### Constraints
     ###########################################################################
+    logger.debug("Ini Constraints")
 
     ### check P_abs
+
     def check_pabs(model, k):
         return model.testv_k[k] == (2 * (model.auxvar0[k] + model.auxvar1[k])) * model.P_price[k] # (model.P_res[k]-model.P_tar)
 
     model.CheckPdiff = Constraint(model.K, rule=check_pabs)
+    logger.debug("Ini Constraint: {}",model.CheckPdiff.name)
 
     ### Absolute value in objective function
     def absolute_value_Pdiff(model, k):
@@ -124,18 +134,22 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
         return model.auxvar0[k] - model.auxvar1[k] == (model.P_res[k] - model.P_tar)
 
     model.AbsPdiff = Constraint(model.K, rule=absolute_value_Pdiff)
+    logger.debug("Ini Constraint: {}", model.AbsPdiff.name)
 
     ### Absolute power deviation
     def abspowerdev(model):
         return model.Costs_powerdev == sum(((2 * (model.auxvar0[k] + model.auxvar1[k]))) * model.P_price[k] for k in model.K)
 
     model.CPowerDev = Constraint(rule=abspowerdev)
+    logger.debug("Ini Constraint: {}", model.CPowerDev.name)
 
     ### Grid surcharges
+    logger.debug("Define Constraints for grid surcharges")
     def gridsurcharges(model):
 
         return model.Costs_surcharges == (sum(model.P_res[k]/60 * model.gs_price_energy for k in model.K)
                         + model.P_max_quart * model.gs_price_power)
+
 
 
     def gs_power_quarterly(model,kq):
@@ -156,6 +170,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
 
         return sum(model.aux_gs_b[kq] for kq in model.Kq) == 1
 
+    logger.debug("Ini Constraints for grid surcharges")
     model.GridSurcharges = Constraint(rule=gridsurcharges)
     model.gs_PowerQuart = Constraint(model.Kq, rule=gs_power_quarterly)
     model.gs_PowerQuart0 = Constraint(model.Kq, rule=gs_power_quarterly0)
@@ -175,21 +190,22 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
     #model.MaxLoadPenalty = Constraint(model.K,rule=maxloadpenalty)
 
     ### Resulting Power
+
     def resulting_power(model, k):
         return model.P_res[k] == sum(model.P_s_k[s, k] for s in model.S) + model.P_fix[k]
 
     model.ResultingPower = Constraint(model.K, rule=resulting_power)
-
+    logger.debug("Ini constraint: {}", model.ResultingPower.name)
     ### Power of single Process
     def process_power(model, s, k):
 
         return model.P_s_k[s, k] == sum(model.fs_r[s, r] * model.ws_r_k[s, r, k] for r in model.R)
 
     model.ProcessPower = Constraint(model.S, model.K, rule=process_power)
-
+    logger.debug("Ini constraint: {}", model.ProcessPower.name)
     ####################################
     ########## w_srk
-
+    logger.debug("Ini constraints for {}", model.ws_r_k.name)
     ### >=0
     def fix_w00(model, s, r, k):
 
@@ -222,7 +238,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
             return Constraint.Skip
 
     model.EnsureSequence = Constraint(model.S, model.R, model.K, rule=ensure_sequence)
-
+    logger.debug("Ini constraint: {}", model.EnsureSequence.name)
     ### Ensure activation
 
     def fix_w1(model, s, r):
@@ -270,9 +286,10 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
         return sum(model.actp_s_k[s, k] for s in model.S) <= model.limparallel
 
     model.ParallelLim = Constraint(model.S, model.K, rule=limit_parallel_processes)
-
+    logger.debug("Ini constraint: {}", model.ParallelLim.name)
     ###########################################################################
     ### Edit multi sequences
+    logger.debug("Ini constraints for process: start/end/active")
     if True:
         ### Start Variable
         def start0(model, s, k):
@@ -326,6 +343,8 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
         model.Act = Constraint(model.S, model.K, rule=act)
         model.BindStartEnd = Constraint(model.S, model.K, rule=start_end_binding)
 
+
+        logger.debug("Ini constraints for numbers of cycles")
         ### Number of cycles
         def numcyc(model):
             return sum(model.sp_s_k[s, k] for s in model.S for k in model.K) == total_number_of_cycles
@@ -338,6 +357,7 @@ def create_process_model(load_timeseries=None, price_timeseries=None,
         model.NumCyc2 = Constraint(model.R, rule=numcyc2)
 
 
+    logger.debug("Finished ini of constraints")
     return model
 
 
