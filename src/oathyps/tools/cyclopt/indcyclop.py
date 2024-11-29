@@ -7,7 +7,8 @@ Created on Thu Sep 26 13:41:57 2024
 """
 import numpy as np
 from loguru import logger
-from pyomo.environ import *
+import pyomo.environ as pyo
+#from pyomo.environ import *
 from pyomo.opt import SolverFactory
 from pyomo.util.infeasible import log_infeasible_constraints
 
@@ -20,6 +21,119 @@ def constr2d(data):
     return out
 
 
+def create_simple_process_model(load_timeseries=None, price_timeseries=None,
+                            number_of_processes=2,total_number_of_cycles=2,
+                            timerange=30,
+                            loadprofile=[0,1,1,0],
+                            target_power_level=0,
+                            test=False,
+                            **kwargs
+                                ):
+    abort = False
+    logger.info("Create simple process (optimization) model")
+
+    if load_timeseries is not None:
+        timerange = len(load_timeseries)
+    elif load_timeseries is None and timerange is not None:
+        load_timeseries = np.ones(timerange)
+    else:
+        abort = True
+        model = None
+        logger.info(" ---Abort--- ")
+
+    if not abort:
+
+        logger.info("Setup concrete model")
+        model = pyo.ConcreteModel()
+
+        logger.info("Initialize Sets")
+        model.S = pyo.Set(initialize=np.arange(number_of_processes))
+        model.T = pyo.Set(initialize=np.arange(timerange))
+
+        logger.info("Initialize Parameters")
+        model.ds = pyo.Param(initialize=len(loadprofile))
+        model.TN = pyo.Param(initialize=timerange)
+        model.pfix = pyo.Param(model.T, initialize=load_timeseries)
+        model.ptar = pyo.Param(initialize=target_power_level)
+
+        logger.info("Initialize Variables")
+        model.w = pyo.Var(model.T, model.S, within=pyo.Binary)
+
+        model.Ps = pyo.Var(model.T, model.S, within=pyo.NonNegativeReals)
+
+        model.pres = pyo.Var(model.T)  # Resulting power
+        model.pabs = pyo.Var(model.T)
+
+        model.auxvar0 = pyo.Var(model.T, initialize=0, within=pyo.NonNegativeReals)
+        model.auxvar1 = pyo.Var(model.T, initialize=0, within=pyo.NonNegativeReals)
+        model.powerdev = pyo.Var()
+
+        ###############################################################################
+        ###############################################################################
+
+        logger.info("Initialize Objective function")
+        def objective_func(model):
+            return model.powerdev  # sum( model.pres[t] - model.ptar for t in model.T)
+
+        model.Objective = pyo.Objective(rule=objective_func, sense=pyo.minimize)
+
+        ### Absolute value in objective function
+        def absolute_value_Pdiff(model, t):
+            return model.auxvar0[t] - model.auxvar1[t] == (model.ptar - model.pres[t])
+
+        ### Absolute power deviation
+        logger.warning("Removed square from obj. funct. due to cbc solving")
+        def abspowerdev(model):
+            return model.powerdev == sum(((2 * (model.auxvar0[t] + model.auxvar1[t])) ) for t in model.T)
+
+        ### Variable for testing purposes
+        if test:
+            def check_pabs(model, k):
+                return model.pabs[k] == (2 * (model.auxvar0[k] + model.auxvar1[k]))
+
+            model.CheckPabs = pyo.Constraint(model.T, rule=check_pabs)
+
+        model.AbsPdiff = pyo.Constraint(model.T, rule=absolute_value_Pdiff)
+        model.PowerDev = pyo.Constraint(rule=abspowerdev)
+
+        ###############################################################################
+        logger.info("Initialize Constraints")
+        def resultingpower(model, t):
+            return model.pres[t] == model.pfix[t] + sum(model.Ps[t, s] for s in model.S)
+
+        model.ResPow = pyo.Constraint(model.T, rule=resultingpower)
+
+        def processpower(model, t, s):
+            if (t - model.ds) > 0:
+                return model.Ps[t, s] == sum(model.w[t - i, s] * val for i, val in enumerate(loadprofile))
+            else:
+                return model.Ps[t, s] == 0  # pyo.Constraint.Skip
+
+        model.ProcessPower = pyo.Constraint(model.T, model.S, rule=processpower)
+
+        def numberofcycles(model):
+            return sum(model.w[i] for i in model.T * model.S) == total_number_of_cycles
+
+        model.NumCyc = pyo.Constraint(rule=numberofcycles)
+
+        def nooverlap(model, t, s):
+            if (t + model.ds) < model.TN:
+                return sum(model.w[t + i, s] for i in range(pyo.value(model.ds))) <= 1
+            else:
+                return model.w[t, s] == 0  # pyo.Constraint.Skip
+
+        model.NoO = pyo.Constraint(model.T, model.S, rule=nooverlap)
+
+        def limw(model, t, s):
+            if (t - model.ds) <= 0:
+                return model.w[t, s] == 0
+            else:
+                return pyo.Constraint.Skip
+
+        model.LimW = pyo.Constraint(model.T, model.S, rule=limw)
+
+        logger.info("Finished setup of model")
+    return model
 
 def create_process_model(load_timeseries=None, price_timeseries=None,
                             number_of_processes=2,total_number_of_cycles=2,

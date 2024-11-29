@@ -239,7 +239,12 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             loadprofile = df_loadprofile[slc_lop_0:slc_lop_1].cyclic_process.to_numpy()/1e3
 
             logger.info("Create model.")
-            model = ico.create_process_model(load_timeseries=timeseries_residualload,
+            if parameters.get("simple_model",False):
+                create_model =  ico.create_simple_process_model
+            else:
+                create_model = ico.create_process_model
+
+            model = create_model(load_timeseries=timeseries_residualload,
                                  price_timeseries=timeseries_price_electricity,
                                  number_of_processes=parameters.get('number_of_processes',None),
                                  total_number_of_cycles=parameters.get('total_number_of_cycles',None),
