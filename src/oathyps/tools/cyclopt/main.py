@@ -171,7 +171,7 @@ def extract_data(modelvariable,pth_out=''):
 
     return
 
-def extract_and_store_data(pth_data, lst_data=[]):
+def extract_and_store_data(model, pth_data, lst_data=[]):
     logger.info("Extract and store data")
 
     for varnm in lst_data:
@@ -313,7 +313,8 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
                 pplt.plot_cyclopt_results(model, pth_out=pth_figure, printvals=True)
 
             ### Save data
-            extract_and_store_data(pth_data,
+            extract_and_store_data(model,
+                                   pth_data,
                                    parameters.get('extract_data',[])
                                    )
 
