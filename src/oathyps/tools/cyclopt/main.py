@@ -209,6 +209,7 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
         logfile_solver = os.path.join(full_pth_outputfiles,"cyclopt_solver.log")
         pth_figure=os.path.join(full_pth_outputfiles,"fig_cyclopt.pdf")
         pth_data = os.path.join(full_pth_outputfiles,"data_cyclopt.csv")
+        lpfile = os.path.join(full_pth_outputfiles, "lp_file.lp")
     else:
         logfile = None
         logfile_solver=None
@@ -274,6 +275,11 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
 
     ### Solve
     if model is not None:
+
+        if parameters.get('write_lp_file', False):
+            logger.info("Write lp-file.")
+            model.write(lpfile,io_options={'symbolic_solver_labels': True})
+        ###
 
 
         if not parameters.get('do_not_solve', False):
