@@ -10,6 +10,7 @@ import sys
 import numpy as np
 import pandas as pd
 import glob
+import pickle
 from loguru import logger
 import matplotlib.pyplot as plt
 from pyomo.environ import *
@@ -170,6 +171,16 @@ def extract_data(modelvariable,pth_out=''):
 
     return
 
+def extract_and_store_data(pth_data, lst_data=[]):
+    logger.info("Extract and store data")
+
+    for varnm in lst_data:
+        var = getattr(model, varnm, None)
+        if var is not None:
+            extract_data(var, pth_out=pth_data)
+        else:
+            logger.info("Could not extract: {}", varnm)
+    return
 
 def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=True):
     ### Add possibility of reading external files
@@ -252,46 +263,64 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
                                  loadprofile=loadprofile,
                                  target_power_level=parameters.get('P_target',{'val':0})['val'],
                                  enable_obj_powerdeviation=parameters.get("enable_obj_powerdeviation",1),
-                                 enable_obj_surcharges=parameters.get("enable_obj_surcharges",0))
+                                 enable_obj_surcharges=parameters.get("enable_obj_surcharges",0),
+                                 test=True)
 
         else:
             logger.info("Could not read file: {}",filename_data)
+            model = None
+
 
 
     ### Solve
     if model is not None:
-        solver = parameters.get('solver','cbc')
-        logger.info("Initialize solver: {}",solver)
 
-        opt = SolverFactory(solver,)
-        #opt.setParam('OptimalityTol',6e-1)
-        opt.options['OptimalityTol'] = 0.01
 
-        #opt.options['IterationLimit'] = 400e3
-        #solver.options['max_iter'] = 40e3
-        logger.info("Start solving model")
-        x = opt.solve(model, tee=solver_verbose,logfile=logfile_solver, )
-        # log_infeasible_constraints(model)
+        if not parameters.get('do_not_solve', False):
+            solver = parameters.get('solver','cbc')
 
-        # model.display()
+            logger.info("Initialize solver: {}",solver)
 
-        # for i in x:
-        #    print(f'{i}: {x[i]}')
-        # # print(value(model.obj))
-        extract_decision_data(model,pth_out=pth_data)
-        lst_data = parameters.get('extract_data',[])
-        for varnm in lst_data:
-            var = getattr(model,varnm, None)
-            if var is not None:
-                extract_data(var,pth_out=pth_data)
-            else:
-                logger.info("Could not extract: {}", varnm)
+            opt = SolverFactory(solver,)
+            opt.options['slog'] = 1
+            opt.options['MIPGap'] = 1
+            opt.options['TimeLimit'] = 600
+            #opt.Params.MIPGap = 0.1
+            #opt.setParam('MIPGap', 0.1)
+            #opt.setParam('Timelimit', 30)
+            #opt.setParam('OptimalityTol',6e-1)
+            #opt.options['OptimalityTol'] = 0.01
 
-        # extract_data(model.ws_r_k, pth_out=pth_data)
-        # print('ws_r_k: ', model.ws_r_k[0,0,:].extract_values())
-        pplt.plot_cyclopt_results(model,pth_out=pth_figure)
+            #opt.options['IterationLimit'] = 400e3
+            #solver.options['max_iter'] = 40e3
+            logger.info("Start solving model")
+            x = opt.solve(model, tee=solver_verbose,logfile=logfile_solver, )
+            # log_infeasible_constraints(model)
+
+            # model.display()
+
+            # for i in x:
+            #    print(f'{i}: {x[i]}')
+            # # print(value(model.obj))
+            if not parameters.get('simple_model',False):
+                extract_decision_data(model,pth_out=pth_data)
+                pplt.plot_cyclopt_results(model, pth_out=pth_figure, printvals=True)
+
+            ### Save data
+            extract_and_store_data(pth_data,
+                                   parameters.get('extract_data',[])
+                                   )
+
+            # extract_data(model.ws_r_k, pth_out=pth_data)
+            # print('ws_r_k: ', model.ws_r_k[0,0,:].extract_values())
+
+        if parameters.get('pickle_model',False):
+            pickle.dumps(model)
+
+
     else:
         logger.info(" -- Abort optimization")
+
     logger.info(" - End - ")
     return model
 
