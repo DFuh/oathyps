@@ -59,7 +59,7 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
         logger.info("Initialize Variables")
         model.w = pyo.Var(model.T, model.S, within=pyo.Binary)
 
-        model.Ps = pyo.Var(model.T, model.S, within=pyo.NonNegativeReals)
+        model.pprc = pyo.Var(model.T, model.S, within=pyo.NonNegativeReals)
 
         model.pres = pyo.Var(model.T)  # Resulting power
         model.pabs = pyo.Var(model.T)
@@ -99,15 +99,15 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
         ###############################################################################
         logger.info("Initialize Constraints")
         def resultingpower(model, t):
-            return model.pres[t] == model.pfix[t] + sum(model.Ps[t, s] for s in model.S)
+            return model.pres[t] == model.pfix[t] + sum(model.pprc[t, s] for s in model.S)
 
         model.ResPow = pyo.Constraint(model.T, rule=resultingpower)
 
         def processpower(model, t, s):
             if (t - model.ds) > 0:
-                return model.Ps[t, s] == sum(model.w[t - i, s] * val for i, val in enumerate(loadprofile))
+                return model.pprc[t, s] == sum(model.w[t - i, s] * val for i, val in enumerate(loadprofile))
             else:
-                return model.Ps[t, s] == 0  # pyo.Constraint.Skip
+                return model.pprc[t, s] == 0  # pyo.Constraint.Skip
 
         model.ProcessPower = pyo.Constraint(model.T, model.S, rule=processpower)
 
