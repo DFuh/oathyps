@@ -288,9 +288,9 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             logger.info("Initialize solver: {}",solver)
 
             opt = SolverFactory(solver,)
-            opt.options['slog'] = 1
-            opt.options['MIPGap'] = 1
-            opt.options['TimeLimit'] = 600
+            #opt.options['slog'] = 1
+            #opt.options['MIPGap'] = 1
+            #opt.options['TimeLimit'] = 600
             #opt.Params.MIPGap = 0.1
             #opt.setParam('MIPGap', 0.1)
             #opt.setParam('Timelimit', 30)
