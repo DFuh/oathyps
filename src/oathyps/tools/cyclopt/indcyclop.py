@@ -26,6 +26,7 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
                             timerange=30,
                             loadprofile=[0,1,1,0],
                             target_power_level=0,
+                            quadratic_powerdev=False,
                             test=False,
                             **kwargs
                                 ):
@@ -82,9 +83,15 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
             return model.auxvar0[t] - model.auxvar1[t] == (model.ptar - model.pres[t])
 
         ### Absolute power deviation
-        logger.warning("Removed square from obj. funct. due to cbc solving")
-        def abspowerdev(model):
-            return model.powerdev == sum(((2 * (model.auxvar0[t] + model.auxvar1[t])) ) for t in model.T)
+
+        if quadratic_powerdev:
+            logger.info("Objective function: Quadratic powerdev")
+            def abspowerdev(model):
+                return model.powerdev == sum(((2 * (model.auxvar0[t] + model.auxvar1[t]))**2 ) for t in model.T)
+        else:
+            logger.info("Objective function: Non-Quadratic powerdev")
+            def abspowerdev(model):
+                return model.powerdev == sum(((2 * (model.auxvar0[t] + model.auxvar1[t])) ) for t in model.T)
 
         ### Variable for testing purposes
         if test:

@@ -256,6 +256,12 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             else:
                 create_model = ico.create_process_model
 
+            solver = parameters.get('solver', 'cbc')
+            if (solver == 'gurobi') and parameters.get("quadratic_powerdev",False):
+                quadratic_objf = True
+            else:
+                quadratic_objf = False
+
             model = create_model(load_timeseries=timeseries_residualload,
                                  price_timeseries=timeseries_price_electricity,
                                  number_of_processes=parameters.get('number_of_processes',None),
@@ -283,7 +289,7 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
 
 
         if not parameters.get('do_not_solve', False):
-            solver = parameters.get('solver','cbc')
+
 
             logger.info("Initialize solver: {}",solver)
 
