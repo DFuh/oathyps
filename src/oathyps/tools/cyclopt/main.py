@@ -240,6 +240,11 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
             offset_residualload = parameters.get('offset_residualload', 0)
             timeseries_residualload = df['residualload'].to_numpy() * fctr_residualload + offset_residualload
 
+            p_target = parameters.get('P_target',0)
+            if not type(p_target) in (int,float):
+                logger.info('Use mean value of input-timeseries as power-target')
+                p_target = timeseries_residualload.mean()
+            logger.info('power-target = {}',p_target)
 
             pth_to_loadprofile = os.path.join(pth_to_inputfiles, filename_loadprofile)
             df_loadprofile = pd.read_csv(pth_to_loadprofile)
@@ -268,7 +273,7 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
                                  total_number_of_cycles=parameters.get('total_number_of_cycles',None),
                                  timerange=TN,
                                  loadprofile=loadprofile,
-                                 target_power_level=parameters.get('P_target',{'val':0})['val'],
+                                 target_power_level=p_target,
                                  enable_obj_powerdeviation=parameters.get("enable_obj_powerdeviation",1),
                                  enable_obj_surcharges=parameters.get("enable_obj_surcharges",0),
                                  test=True)
