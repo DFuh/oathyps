@@ -276,6 +276,7 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
                                  target_power_level=p_target,
                                  enable_obj_powerdeviation=parameters.get("enable_obj_powerdeviation",1),
                                  enable_obj_surcharges=parameters.get("enable_obj_surcharges",0),
+                                 quadratic_powerdev=quadratic_objf,
                                  test=True)
 
         else:
