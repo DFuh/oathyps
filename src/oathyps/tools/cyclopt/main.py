@@ -151,25 +151,29 @@ def extract_data(modelvariable,pth_out=''):
     logger.trace("Column levels in variable: {}",s.columns.nlevels)
 
     if s.index.nlevels >1:
+       data = {}
        for lvl in  range(s.index.nlevels):
-        dfi = s.loc[lvl,:]
-        dfi = dfi.mask(dfi <=0)
-        if pth_out:
-            filepath = pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_')
-            logger.info("Write {} data to file: \n {}",modelvariable.name,filepath)
-            dfi.to_csv(filepath)
+           dfi = s.loc[lvl,:]
+           dfi = dfi.mask(dfi <=0)
+           if pth_out:
+               filepath = pth_out.replace('data','df_'+modelvariable.name+'_'+str(lvl)+'_')
+               logger.info("Write {} data to file: \n {}",modelvariable.name,filepath)
+               dfi.to_csv(filepath)
+           data['df_'+modelvariable.name+'_'+str(lvl)] = dfi
     else:
         if pth_out:
             filepath = pth_out.replace('data','df_'+modelvariable.name+'_')
             logger.info('Write {} data to file: \n {}',modelvariable.name,filepath)
             s.to_csv(filepath)
+        data = s
+
         #print('1: ',s.loc[1, :].plot())
     # multi-index the columns
     # s.columns = pd.MultiIndex.from_tuples([(k, t) for k,t in s.columns])
 
     #serieses.append(s)
 
-    return
+    return data
 
 def extract_and_store_data(model, pth_data, lst_data=[]):
     logger.info("Extract and store data")
