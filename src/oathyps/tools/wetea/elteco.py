@@ -351,7 +351,7 @@ class WaterElectrolyzer():
         self.surcharges_electricity_ac = surcharges_electricity_ac
         self.surcharges_electricity_1gwh = surcharges_electricity_1gwh
 
-        # TODO: iterate utiliozed energy <-> mass hydrogen <-> etc to clc missing values
+        # TODO: iterate utilized energy <-> mass hydrogen <-> etc to clc missing values
 
 
         ### Capex we

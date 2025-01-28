@@ -28,10 +28,20 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
                             target_power_level=0,
                             quadratic_powerdev=False,
                             test=False,
+                            obj_electricitycosts=False,
+                            obj_powerdev=True,
+                            obj_total_electricitycosts=False,
+                            test_no_binaries=False,
+                            Pqlim=None,
                             **kwargs
                                 ):
     abort = False
     logger.info("Create simple process (optimization) model")
+
+    if obj_powerdev is True:
+        if obj_electricitycosts is True:
+            logger.warning('Multiple objectives chosen: Set >powerdev< ')
+        obj_electricitycosts = False
 
     if load_timeseries is not None:
         timerange = len(load_timeseries)
@@ -55,53 +65,100 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
         model.ds = pyo.Param(initialize=len(loadprofile))
         model.TN = pyo.Param(initialize=timerange)
         model.pfix = pyo.Param(model.T, initialize=load_timeseries)
+
+        if obj_electricitycosts or obj_total_electricitycosts:
+            model.cfix = pyo.Param(model.T, initialize=price_timeseries)
         model.ptar = pyo.Param(initialize=target_power_level)
 
         logger.info("Initialize Variables")
-        model.w = pyo.Var(model.T, model.S, within=pyo.Binary)
+        if test_no_binaries:
+            logger.warning('No domain specified for variable: model.w')
+            model.w = pyo.Var(model.T, model.S)
+        else:
+            model.w = pyo.Var(model.T, model.S, within=pyo.Binary)
 
         model.pprc = pyo.Var(model.T, model.S, within=pyo.NonNegativeReals)
-
+        if obj_electricitycosts or obj_total_electricitycosts:
+            model.cres = pyo.Var(model.T,within=pyo.Reals)
         model.pres = pyo.Var(model.T)  # Resulting power
         model.pabs = pyo.Var(model.T)
 
         model.auxvar0 = pyo.Var(model.T, initialize=0, within=pyo.NonNegativeReals)
         model.auxvar1 = pyo.Var(model.T, initialize=0, within=pyo.NonNegativeReals)
         model.powerdev = pyo.Var()
+        if obj_total_electricitycosts:
+            timeindex_l = np.arange(timerange + 1)
+            timeindex_quarterly = timeindex_l[timeindex_l % 15 == 0]
+            model.Tq = pyo.Set(initialize=np.arange(len(timeindex_quarterly)))  # k-quarterly
+            model.gs_price_energy = pyo.Param(initialize=0.34 / 1e2)  # €/kWh
+            model.gs_price_power = pyo.Param(initialize=107.08)  # €/kW
+            model.aux_gs_b = pyo.Var(model.Tq, within=pyo.Binary)
+            model.P_quart = pyo.Var(model.Tq, within=pyo.Reals)
+            model.P_max_quart = pyo.Var()
+            model.costs_gridsurcharges = pyo.Var()
 
+            model.aux_kq = pyo.Param(model.Tq, initialize=timeindex_quarterly, within=pyo.NonNegativeIntegers)
+            model.aux_gs_M = pyo.Param(initialize=1e6)
+            model.gs_price_energy = pyo.Param(initialize=0.34 / 1e2)  # €/kWh
+            model.gs_price_power = pyo.Param(initialize=107.08)  # €/kW
         ###############################################################################
+
         ###############################################################################
 
         logger.info("Initialize Objective function")
-        def objective_func(model):
+        def powerdev_objective(model):
             return model.powerdev  # sum( model.pres[t] - model.ptar for t in model.T)
 
-        model.Objective = pyo.Objective(rule=objective_func, sense=pyo.minimize)
+        def electricitycosts_objective(model):
+            return sum(model.cres[t] for t in model.T)  # sum( model.pres[t] - model.ptar for t in model.T)
 
-        ### Absolute value in objective function
-        def absolute_value_Pdiff(model, t):
-            return model.auxvar0[t] - model.auxvar1[t] == (model.ptar - model.pres[t])
+        def total_electricitycosts_objective(model):
+            #return sum(model.cres[t] for t in model.T) + model.costs_gridsurcharges # sum( model.pres[t] - model.ptar for t in model.T)
 
-        ### Absolute power deviation
+            return model.costs_gridsurcharges  # sum( model.pres[t] - model.ptar for t in model.T)
 
-        if quadratic_powerdev:
-            logger.info("Objective function: Quadratic powerdev")
-            def abspowerdev(model):
-                return model.powerdev == sum(((2 * (model.auxvar0[t] + model.auxvar1[t]))**2 ) for t in model.T)
-        else:
-            logger.info("Objective function: Non-Quadratic powerdev")
-            def abspowerdev(model):
-                return model.powerdev == sum(((2 * (model.auxvar0[t] + model.auxvar1[t])) ) for t in model.T)
+        if obj_powerdev:
+            model.Objective = pyo.Objective(rule=powerdev_objective, sense=pyo.minimize)
+        elif obj_electricitycosts:
+            model.Objective = pyo.Objective(rule=electricitycosts_objective, sense=pyo.minimize)
+        elif obj_total_electricitycosts:
+            model.Objective = pyo.Objective(rule=total_electricitycosts_objective, sense=pyo.minimize)
 
-        ### Variable for testing purposes
-        if test:
-            def check_pabs(model, k):
-                return model.pabs[k] == (2 * (model.auxvar0[k] + model.auxvar1[k]))
+        if obj_powerdev:
+            ### Absolute value in objective function
+            def absolute_value_Pdiff(model, t):
+                return model.auxvar0[t] - model.auxvar1[t] == (model.ptar - model.pres[t])
 
-            model.CheckPabs = pyo.Constraint(model.T, rule=check_pabs)
+            ### Absolute power deviation
 
-        model.AbsPdiff = pyo.Constraint(model.T, rule=absolute_value_Pdiff)
-        model.PowerDev = pyo.Constraint(rule=abspowerdev)
+            if quadratic_powerdev:
+                logger.info("Objective function: Quadratic powerdev")
+                def abspowerdev(model):
+                    return model.powerdev == sum(((2 * (model.auxvar0[t] + model.auxvar1[t]))**2 ) for t in model.T)
+            else:
+                logger.info("Objective function: Non-Quadratic powerdev")
+                def abspowerdev(model):
+                    return model.powerdev == sum(((2 * (model.auxvar0[t] + model.auxvar1[t])) ) for t in model.T)
+
+            ### Variable for testing purposes
+            if test:
+                def check_pabs(model, k):
+                    return model.pabs[k] == (2 * (model.auxvar0[k] + model.auxvar1[k]))
+
+                model.CheckPabs = pyo.Constraint(model.T, rule=check_pabs)
+
+            model.AbsPdiff = pyo.Constraint(model.T, rule=absolute_value_Pdiff)
+            model.PowerDev = pyo.Constraint(rule=abspowerdev)
+
+        elif obj_electricitycosts or obj_total_electricitycosts:
+            def resultingcosts(model,t):
+                return model.cres[t] == model.pres[t]/60 * model.cfix[t]
+
+            model.rescosts = pyo.Constraint(model.T, rule=resultingcosts)
+
+        if obj_total_electricitycosts:
+            model = add_constraints_gridsurcharges_(model, plimq=Pqlim)
+        ###############################################################################
 
         ###############################################################################
         logger.info("Initialize Constraints")
@@ -111,7 +168,11 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
         model.ResPow = pyo.Constraint(model.T, rule=resultingpower)
 
         def processpower(model, t, s):
-            if (t - model.ds) > 0:
+            #if (t <= model.TN-model.ds):
+            #    return model.pprc[t, s] == sum(model.w[t + i, s] * val for i, val in enumerate(loadprofile[::-1]))
+            #else:
+            #    return pyo.Constraint.Skip
+            if (t - model.ds) >= 0:
                 return model.pprc[t, s] == sum(model.w[t - i, s] * val for i, val in enumerate(loadprofile))
             else:
                 return model.pprc[t, s] == 0  # pyo.Constraint.Skip
@@ -141,6 +202,58 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
 
         logger.info("Finished setup of model")
     return model
+
+
+
+def add_constraints_gridsurcharges_(model, plimq=None):
+    ### Grid surcharges
+    logger.debug("Define Constraints for grid surcharges")
+
+    #model.Costs_powerdev = Var()
+
+    def gridsurcharges(model):
+
+        return model.costs_gridsurcharges == (0 #sum(model.pres[k] / 60 * model.gs_price_energy for k in model.T)
+                                          + model.P_max_quart * model.gs_price_power)
+
+    #def aux_cgs(model, t):
+    #    return model.pres[t] / 60 * model.gs_price_energy + model.P_max_quart * model.gs_price_power)
+
+
+    def gs_power_quarterly(model, kq):
+        if model.aux_kq[kq] < model.TN+1:
+            return model.P_quart[kq] == sum(model.pres[k] for k in model.T if
+                                            pyo.value(k) >= model.aux_kq[kq] and pyo.value(k) <= model.aux_kq[kq + 1]) / 15
+        else:
+            return pyo.Constraint.Skip
+
+    def gs_power_quarterly0(model, kq):
+
+        return model.P_max_quart >= model.P_quart[kq]
+
+    def gs_power_quarterly1(model, kq):
+
+        return model.P_max_quart <= model.P_quart[kq] + (1 - model.aux_gs_b[kq]) * model.aux_gs_M
+
+    def gs_power_quarterly2(model):
+
+        return sum(model.aux_gs_b[kq] for kq in model.Tq) == 1
+
+    if plimq is not None:
+        logger.info("Add constraint for ul P_max_quarterly")
+        def lim_pmax_quart(model,kq):
+            return model.P_max_quart <= plimq
+        model.ulPqlim = pyo.Constraint(model.Tq, rule=lim_pmax_quart)
+
+    logger.debug("Ini Constraints for grid surcharges")
+    model.GridSurcharges = pyo.Constraint(rule=gridsurcharges)
+    model.gs_PowerQuart = pyo.Constraint(model.Tq, rule=gs_power_quarterly)
+    model.gs_PowerQuart0 = pyo.Constraint(model.Tq, rule=gs_power_quarterly0)
+    model.gs_PowerQuart1 = pyo.Constraint(model.Tq, rule=gs_power_quarterly1)
+    model.gs_PowerQuart2 = pyo.Constraint(rule=gs_power_quarterly2)
+
+    return model
+
 
 def create_process_model(load_timeseries=None, price_timeseries=None,
                             number_of_processes=2,total_number_of_cycles=2,

@@ -47,7 +47,7 @@ with (st.sidebar):
     use_default_data = st.checkbox('Use default data')
 
     if not use_default_data:
-        file_in = st.file_uploader('Specify path to file (DataFrame wit [Date, Power] columns)' )
+        file_in = st.file_uploader('Specify path to file (DataFrame with [Date, Power] columns)' )
     else:
         file_in = None
 
