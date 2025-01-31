@@ -166,16 +166,10 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
             return model.pres[t] == model.pfix[t] + sum(model.pprc[t, s] for s in model.S)
 
         model.ResPow = pyo.Constraint(model.T, rule=resultingpower)
-
+        logger.info('Test')
         def processpower(model, t, s):
-            #if (t <= model.TN-model.ds):
-            #    return model.pprc[t, s] == sum(model.w[t + i, s] * val for i, val in enumerate(loadprofile[::-1]))
-            #else:
-            #    return pyo.Constraint.Skip
-            if (t - model.ds) >= 0:
-                return model.pprc[t, s] == sum(model.w[t - i, s] * val for i, val in enumerate(loadprofile))
-            else:
-                return model.pprc[t, s] == 0  # pyo.Constraint.Skip
+            # if (t - model.ds) >= 0:
+            return model.pprc[t, s] == sum(model.w[t - i, s] * val for i, val in enumerate(loadprofile) if t-i >=0)
 
         model.ProcessPower = pyo.Constraint(model.T, model.S, rule=processpower)
 
@@ -198,7 +192,7 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
             else:
                 return pyo.Constraint.Skip
 
-        model.LimW = pyo.Constraint(model.T, model.S, rule=limw)
+        # model.LimW = pyo.Constraint(model.T, model.S, rule=limw)
 
         logger.info("Finished setup of model")
     return model
