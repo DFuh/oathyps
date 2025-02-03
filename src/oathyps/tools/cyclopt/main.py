@@ -278,14 +278,12 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
                                  timerange=TN,
                                  loadprofile=loadprofile,
                                  target_power_level=p_target,
-                                 enable_obj_powerdeviation=parameters.get("enable_obj_powerdeviation",1),
-                                 enable_obj_surcharges=parameters.get("enable_obj_surcharges",0),
+                                 obj_powerdev=parameters.get("enable_obj_powerdeviation",1),
+                                 obj_electricitycosts=parameters.get("enable_obj_electricitycosts",0),
+                                 obj_total_electricitycosts=parameters.get("enable_obj_total_electricitycosts", 0),
                                  quadratic_powerdev=quadratic_objf,
+                                 Pqlim=None,
                                  test=True)
-
-        else:
-            logger.info("Could not read file: {}",filename_data)
-            model = None
 
 
 
