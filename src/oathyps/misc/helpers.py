@@ -5,7 +5,7 @@ Auxilliary functions.
 @author: David Fuhrländer
 """
 import os
-import logging
+from loguru import logger
 import datetime
 
 def timestamp(how='ISO'):
