@@ -238,11 +238,14 @@ def run_copt(pth_to_inputfiles=None, pth_to_outputfiles=None, solver_verbose=Tru
 
             fctr_price_electricity = parameters.get('factor_price_electricity',1)
             offset_price_electricity = parameters.get('offset_price_electricity', 0)
-            timeseries_price_electricity = df['price_electricity'].to_numpy() * fctr_price_electricity + offset_price_electricity
+            column_electricityprice = parameters.get('column_name_ts_price', 'price_electricity')
+            column_residualload = parameters.get('column_name_ts_load', 'residualload')
+            
+            timeseries_price_electricity = df[column_electricityprice].to_numpy() * fctr_price_electricity + offset_price_electricity
 
             fctr_residualload = parameters.get('factor_residualload', 1)
             offset_residualload = parameters.get('offset_residualload', 0)
-            timeseries_residualload = df['residualload'].to_numpy() * fctr_residualload + offset_residualload
+            timeseries_residualload = df[column_residualload].to_numpy() * fctr_residualload + offset_residualload
 
             p_target = parameters.get('P_target',0)
             if not type(p_target) in (int,float):
