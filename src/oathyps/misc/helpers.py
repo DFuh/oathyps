@@ -75,13 +75,21 @@ def print_filelist(fllst, name=None):
     return
 
 
-def mk_dir(pth=None,nm='',timestamp_format='ISO+md'):
+def mk_dir(pth=None,nm='',timestamp_in_name=False,timestamp_format='ISO+md'):
     if pth is None:
         pth = os.getcwd()
 
-    tstmp = timestamp(how=timestamp_format)
+    if timestamp_format is not None:
+        tstmp = timestamp(how=timestamp_format)
+    else:
+        tstmp=''
     # make basic output directory
-    pth_out = os.path.join(pth, nm, tstmp)
+    if timestamp_in_name:
+        pth_out = os.path.join(pth, tstmp+nm)
+    else:
+        pth_out = os.path.join(pth, nm, tstmp)
+
+    logger.info('Make dir: {}', pth_out)
     os.makedirs(pth_out, exist_ok=True)
 
     return pth_out
