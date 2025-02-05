@@ -37,7 +37,8 @@ def create_simple_process_model(load_timeseries=None, price_timeseries=None,
                                 ):
     abort = False
     logger.info("Create simple process (optimization) model")
-
+    logger.info("Objective settings: \n powerdev={}, \n electricitycosts={}, \n total_electricitycosts={}",
+                obj_powerdev,obj_electricitycosts,obj_total_electricitycosts)
     if obj_powerdev is True:
         if obj_electricitycosts is True:
             logger.warning('Multiple objectives chosen: Set >powerdev< ')
